@@ -10,11 +10,15 @@ Configure the runtime without committing weights or secrets:
 
 ```bash
 export SENTRYX_MODEL_PATH=/kaggle/working/sentryx_training/visdrone_person_v1/weights/best.pt
-export SENTRYX_INFERENCE_SIZE=1280
-export SENTRYX_DETECTION_CONF=0.20
-export SENTRYX_TILE_SIZE=640
-export SENTRYX_TILE_OVERLAP=0.25
+export SENTRYX_INFERENCE_SIZE=1536
+export SENTRYX_DETECTION_CONF=0.10
+export SENTRYX_TILE_SIZE=960
+export SENTRYX_TILE_OVERLAP=0.30
 export SENTRYX_USE_TILED_INFERENCE=true
+export SENTRYX_TILE_UPSCALE=2.0
+export SENTRYX_DEBUG_DETECTION=false
+export SENTRYX_DEBUG_DIR=/kaggle/working/sentryx_debug
+export SENTRYX_LOG_EVERY_N_FRAMES=30
 export SENTRYX_CORS_ORIGINS=https://sentry-x-nine.vercel.app,http://localhost:3000
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```

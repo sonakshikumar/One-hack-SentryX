@@ -21,6 +21,7 @@ const INITIAL_TRIPWIRE = [
 const HANDLE_RADIUS = 7;
 const MIDPOINT_RADIUS = 5;
 const SUPPORTED_OBJECT_CLASSES = ['person', 'car', 'truck', 'bus', 'motorcycle', 'bicycle'];
+const ANALYSIS_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AI_ANALYSIS_TIMEOUT_MS || 10 * 60 * 1000);
 
 export function Workbench() {
   const { baseUrl } = useApiConfig();
@@ -466,24 +467,33 @@ export function Workbench() {
 
     form.append('max_duration', String(Math.min(60, maxDuration)));
     form.append('enabled_classes', JSON.stringify(SUPPORTED_OBJECT_CLASSES));
-    if (videoMode !== 'rgb') {
-      form.append('night_mode', 'true');
-    }
+    form.append('video_mode', videoMode === 'lowlight' ? 'low-light' : videoMode);
+    if (videoMode !== 'rgb') form.append('night_mode', 'true');
 
     const targetEndpoint = `${baseUrl}/api/v1/analytics/full`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
     setProcessing(true);
 
     try {
       const response = await fetch(targetEndpoint, {
         method: 'POST',
         body: form,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+      const contentType = response.headers.get('content-type') || '(missing)';
 
       if (!response.ok) {
-        if (response.status === 502 || response.status === 524) {
-          throw new Error(`HTTP ${response.status}: Inference host timed out. Try a shorter clip or a lower max duration.`);
-        }
-        throw new Error(`Inference pipeline returned HTTP ${response.status} (${response.statusText || 'Error'})`);
+        const responseText = (await response.text()).slice(0, 2000) || '(empty response)';
+        const error = new Error(`AI request failed: HTTP ${response.status} ${response.statusText || ''}; content-type=${contentType}; response=${responseText}`);
+        error.code = 'HTTP_ERROR';
+        throw error;
+      }
+
+      if (!contentType.toLowerCase().includes('video/mp4')) {
+        const responseText = (await response.text()).slice(0, 2000) || '(empty response)';
+        throw new Error(`AI request returned an unexpected content type: ${contentType}; response=${responseText}`);
       }
 
       const rawBreaches = response.headers.get('X-SentryX-Breach-Count');
@@ -505,11 +515,16 @@ export function Workbench() {
       setResult(analysis);
       saveLastAnalysis(analysis);
     } catch (err) {
+      clearTimeout(timeoutId);
       const msg = err.message || '';
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('502')) {
-        setError(msg || 'Could not reach the inference host. Check Settings or use a shorter clip.');
+      if (err.name === 'AbortError') {
+        setError(`AI analysis timed out after ${Math.round(ANALYSIS_TIMEOUT_MS / 60000)} minutes. The 4K upload or inference may still be processing; try a shorter clip if the service did not complete.`);
+      } else if (err.code === 'HTTP_ERROR') {
+        setError(msg);
+      } else if (err.name === 'TypeError' || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError(`AI request could not be completed: network or CORS failure. URL: ${targetEndpoint}. Browser error: ${msg || 'Failed to fetch'}`);
       } else {
-        setError(err.message || 'Failed to run analysis.');
+        setError(`AI analysis failed for ${targetEndpoint}: ${msg || 'Unknown client error'}`);
       }
     } finally {
       setProcessing(false);

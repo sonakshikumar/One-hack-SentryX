@@ -29,11 +29,16 @@ logging.basicConfig(level=os.getenv("SENTRYX_LOG_LEVEL", "INFO"))
 log = logging.getLogger("sentryx")
 
 MODEL_PATH = os.getenv("SENTRYX_MODEL_PATH", "yolov8n.pt")
-INFERENCE_SIZE = int(os.getenv("SENTRYX_INFERENCE_SIZE", "1280"))
-DETECTION_CONF = float(os.getenv("SENTRYX_DETECTION_CONF", "0.20"))
-TILE_SIZE = int(os.getenv("SENTRYX_TILE_SIZE", "640"))
-TILE_OVERLAP = float(os.getenv("SENTRYX_TILE_OVERLAP", "0.25"))
+INFERENCE_SIZE = int(os.getenv("SENTRYX_INFERENCE_SIZE", "1536"))
+DETECTION_CONF = float(os.getenv("SENTRYX_DETECTION_CONF", "0.10"))
+TILE_SIZE = int(os.getenv("SENTRYX_TILE_SIZE", "960"))
+TILE_OVERLAP = float(os.getenv("SENTRYX_TILE_OVERLAP", "0.30"))
 USE_TILED = os.getenv("SENTRYX_USE_TILED_INFERENCE", "true").lower() in {"1", "true", "yes", "on"}
+TILE_UPSCALE = float(os.getenv("SENTRYX_TILE_UPSCALE", "2.0"))
+DEBUG_DETECTION = os.getenv("SENTRYX_DEBUG_DETECTION", "false").lower() in {"1", "true", "yes", "on"}
+DEBUG_DIR = os.getenv("SENTRYX_DEBUG_DIR", "/kaggle/working/sentryx_debug")
+LOG_EVERY_N_FRAMES = max(1, int(os.getenv("SENTRYX_LOG_EVERY_N_FRAMES", "30")))
+RAW_CONFIDENCE_FLOOR = min(0.05, DETECTION_CONF)
 DEVICE = 0 if torch.cuda.is_available() else "cpu"
 MODEL = None
 MODEL_ERROR = None
@@ -82,7 +87,7 @@ def parse_points(value, field):
         raise HTTPException(422, f"Invalid {field}") from exc
 
 
-def detections_from_result(result, offset=(0, 0)):
+def detections_from_result(result, offset=(0, 0), scale=(1.0, 1.0)):
     detections = []
     if result.boxes is None:
         return detections
@@ -90,33 +95,64 @@ def detections_from_result(result, offset=(0, 0)):
     for box, confidence, cls in zip(result.boxes.xyxy.tolist(), result.boxes.conf.tolist(), result.boxes.cls.tolist()):
         label = str(names.get(int(cls), int(cls))).lower()
         x1, y1, x2, y2 = box
-        detections.append({"class_name": label, "confidence": round(float(confidence), 5), "bbox": [x1 + offset[0], y1 + offset[1], x2 + offset[0], y2 + offset[1]]})
+        detections.append({"class_name": label, "confidence": round(float(confidence), 5), "bbox": [x1 / scale[0] + offset[0], y1 / scale[1] + offset[1], x2 / scale[0] + offset[0], y2 / scale[1] + offset[1]]})
     return detections
 
 
+def filter_detections(detections):
+    return [detection for detection in detections if detection["confidence"] >= DETECTION_CONF]
+
+
 def run_detection(frame):
-    if not USE_TILED:
-        result = MODEL.predict(frame, imgsz=INFERENCE_SIZE, conf=DETECTION_CONF, device=DEVICE, verbose=False)[0]
-        return detections_from_result(result)
     height, width = frame.shape[:2]
-    stride = max(1, int(TILE_SIZE * (1 - TILE_OVERLAP)))
+    use_small_object_profile = width >= 2560
+    tile_size = 640 if use_small_object_profile else TILE_SIZE
+    tile_overlap = 0.50 if use_small_object_profile else TILE_OVERLAP
+    tile_upscale = TILE_UPSCALE if use_small_object_profile else 1.0
+    if not USE_TILED:
+        result = MODEL.predict(frame, imgsz=INFERENCE_SIZE, conf=RAW_CONFIDENCE_FLOOR, device=DEVICE, verbose=False)[0]
+        raw = detections_from_result(result)
+        return raw, filter_detections(raw), len(raw), 1
+    stride = max(1, int(tile_size * (1 - tile_overlap)))
     detections = []
-    for y in range(0, max(1, height - TILE_SIZE + 1), stride):
-        for x in range(0, max(1, width - TILE_SIZE + 1), stride):
-            x2, y2 = min(width, x + TILE_SIZE), min(height, y + TILE_SIZE)
+    tile_count = 0
+    for y in range(0, max(1, height - tile_size + 1), stride):
+        for x in range(0, max(1, width - tile_size + 1), stride):
+            x2, y2 = min(width, x + tile_size), min(height, y + tile_size)
             tile = frame[y:y2, x:x2]
-            result = MODEL.predict(tile, imgsz=INFERENCE_SIZE, conf=DETECTION_CONF, device=DEVICE, verbose=False)[0]
-            detections.extend(detections_from_result(result, (x, y)))
+            if tile_upscale != 1.0:
+                tile = cv2.resize(tile, (int(tile.shape[1] * tile_upscale), int(tile.shape[0] * tile_upscale)), interpolation=cv2.INTER_LINEAR)
+            result = MODEL.predict(tile, imgsz=INFERENCE_SIZE, conf=RAW_CONFIDENCE_FLOOR, device=DEVICE, verbose=False)[0]
+            detections.extend(detections_from_result(result, (x, y), (tile_upscale, tile_upscale)))
+            tile_count += 1
     # Ultralytics NMS runs within each tile; suppress duplicate boxes again
     # after remapping them into the original-frame coordinate system.
+    candidates_after_confidence = filter_detections(detections)
     merged = []
-    for label in sorted({item['class_name'] for item in detections}):
-        candidates = [item for item in detections if item['class_name'] == label]
+    for label in sorted({item['class_name'] for item in candidates_after_confidence}):
+        candidates = [item for item in candidates_after_confidence if item['class_name'] == label]
         boxes = [[d['bbox'][0], d['bbox'][1], d['bbox'][2] - d['bbox'][0], d['bbox'][3] - d['bbox'][1]] for d in candidates]
         indices = cv2.dnn.NMSBoxes(boxes, [d['confidence'] for d in candidates], DETECTION_CONF, 0.45)
         for index in indices:
             merged.append(candidates[int(index)])
-    return merged
+    return detections, merged, len(candidates_after_confidence), tile_count
+
+
+def confidence_buckets(detections):
+    buckets = {"0.05-0.10": 0, "0.10-0.20": 0, "0.20-0.30": 0, "0.30-0.50": 0, "0.50+": 0}
+    for detection in detections:
+        confidence = detection["confidence"]
+        if confidence < 0.10:
+            buckets["0.05-0.10"] += 1
+        elif confidence < 0.20:
+            buckets["0.10-0.20"] += 1
+        elif confidence < 0.30:
+            buckets["0.20-0.30"] += 1
+        elif confidence < 0.50:
+            buckets["0.30-0.50"] += 1
+        else:
+            buckets["0.50+"] += 1
+    return buckets
 
 
 def encode_browser_video(source_path, output_path, fps, width, height):
@@ -195,9 +231,21 @@ async def analytics_full(
             ok, frame = capture.read()
             if not ok:
                 break
-            detections = run_detection(frame)
+            raw_detections, detections, before_nms, tile_count = run_detection(frame)
             if allowed:
                 detections = [d for d in detections if d["class_name"] in allowed]
+            if frame_index % LOG_EVERY_N_FRAMES == 0:
+                persons = [d for d in detections if d["class_name"] == "person"]
+                confidences = [d["confidence"] for d in raw_detections]
+                log.info("[DETECTION DEBUG] frame=%s source_resolution=%sx%s tiles=%s raw_tile_detections=%s after_global_nms=%s person_detections=%s confidence_min=%s confidence_max=%s buckets=%s", frame_index, width, height, tile_count, len(raw_detections), len(detections), len(persons), min(confidences, default=0), max(confidences, default=0), confidence_buckets(raw_detections))
+                if DEBUG_DETECTION and frame_index // LOG_EVERY_N_FRAMES < 5:
+                    os.makedirs(DEBUG_DIR, exist_ok=True)
+                    debug_frame = frame.copy()
+                    for detection in detections:
+                        x1, y1, x2, y2 = map(int, detection["bbox"])
+                        cv2.rectangle(debug_frame, (x1, y1), (x2, y2), (40, 220, 80), 2)
+                        cv2.putText(debug_frame, f"{detection['class_name']} {detection['confidence']:.2f}", (x1, max(15, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (40, 220, 80), 2)
+                    cv2.imwrite(os.path.join(DEBUG_DIR, f"frame_{frame_index:06d}.jpg"), debug_frame)
             for detection in detections:
                 x1, y1, x2, y2 = detection["bbox"]
                 label = detection["class_name"]
