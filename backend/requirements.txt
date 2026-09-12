@@ -1,0 +1,6 @@
+# Kaggle should provide the working PyTorch/CUDA/Ultralytics stack.
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+ultralytics

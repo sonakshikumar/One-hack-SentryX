@@ -1,0 +1,11 @@
+*.pt
+*.pth
+*.onnx
+*.mp4
+*.avi
+*.mov
+__pycache__/
+.env
+kaggle/
+sentryx_diagnostics/
+tunnel.log

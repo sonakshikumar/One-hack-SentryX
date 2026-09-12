@@ -37,9 +37,12 @@ export function getApiBaseUrl() {
 }
 
 export function useApiConfig() {
-  const [baseUrl, setBaseUrlState] = useState(() => getApiBaseUrl());
+  // Keep the server render and first browser render identical. The persisted
+  // browser URL is loaded after mount to avoid hydration mismatches.
+  const [baseUrl, setBaseUrlState] = useState('');
   useEffect(() => {
-    const refresh = () => setBaseUrl(getApiBaseUrl());
+    const refresh = () => setBaseUrlState(getApiBaseUrl());
+    refresh();
     window.addEventListener(CONFIG_EVENT, refresh);
     window.addEventListener('storage', refresh);
     return () => {

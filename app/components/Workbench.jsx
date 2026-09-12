@@ -20,6 +20,7 @@ const INITIAL_TRIPWIRE = [
 
 const HANDLE_RADIUS = 7;
 const MIDPOINT_RADIUS = 5;
+const SUPPORTED_OBJECT_CLASSES = ['person', 'car', 'truck', 'bus', 'motorcycle', 'bicycle'];
 
 export function Workbench() {
   const { baseUrl } = useApiConfig();
@@ -34,6 +35,7 @@ export function Workbench() {
 
   const [tool, setTool] = useState('fence');
   const [fence, setFence] = useState(null);
+  const [fenceClosed, setFenceClosed] = useState(false);
   const [tripwire, setTripwire] = useState(null);
   const [tripwireFlipped, setTripwireFlipped] = useState(false);
   const [draggingHandle, setDraggingHandle] = useState(null);
@@ -44,6 +46,16 @@ export function Workbench() {
   const [progressPhase, setProgressPhase] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+
+  const canvasPointToNative = useCallback((point) => ({
+    x: Math.round(point.x * nativeRes.width / 800),
+    y: Math.round(point.y * nativeRes.height / 450)
+  }), [nativeRes]);
+
+  const nativePointToCanvas = useCallback((point) => ({
+    x: point.x * 800 / nativeRes.width,
+    y: point.y * 450 / nativeRes.height
+  }), [nativeRes]);
 
   useEffect(() => {
     const apply = (cfg) => {
@@ -146,20 +158,23 @@ export function Workbench() {
       ctx.fillStyle = 'rgba(12, 25, 33, 0.22)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (fence && fence.length >= 3) {
+      const canvasFence = fence?.map(nativePointToCanvas) || [];
+      if (canvasFence.length > 0) {
         ctx.beginPath();
-        ctx.moveTo(fence[0].x, fence[0].y);
-        for (let i = 1; i < fence.length; i++) {
-          ctx.lineTo(fence[i].x, fence[i].y);
+        ctx.moveTo(canvasFence[0].x, canvasFence[0].y);
+        for (let i = 1; i < canvasFence.length; i++) {
+          ctx.lineTo(canvasFence[i].x, canvasFence[i].y);
         }
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255, 0, 50, 0.25)';
-        ctx.fill();
+        if (fenceClosed && canvasFence.length >= 3) {
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255, 0, 50, 0.25)';
+          ctx.fill();
+        }
         ctx.strokeStyle = '#ff0033';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        fence.forEach((pt, i) => {
+        canvasFence.forEach((pt, i) => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, HANDLE_RADIUS, 0, Math.PI * 2);
           ctx.fillStyle = '#ff0033';
@@ -172,9 +187,10 @@ export function Workbench() {
           ctx.fillText(String(i + 1), pt.x - 3, pt.y + 3);
         });
 
-        for (let i = 0; i < fence.length; i++) {
-          const p1 = fence[i];
-          const p2 = fence[(i + 1) % fence.length];
+        const edgeCount = fenceClosed ? canvasFence.length : canvasFence.length - 1;
+        for (let i = 0; i < edgeCount; i++) {
+          const p1 = canvasFence[i];
+          const p2 = canvasFence[(i + 1) % canvasFence.length];
           const mx = (p1.x + p2.x) / 2;
           const my = (p1.y + p2.y) / 2;
 
@@ -196,8 +212,22 @@ export function Workbench() {
         }
       }
 
-      if (tripwire && tripwire.length === 2) {
-        const [p1, p2] = tripwire;
+      if (tripwire && tripwire.length > 0) {
+        const canvasTripwire = tripwire.map(nativePointToCanvas);
+        const [p1, p2] = canvasTripwire;
+        const drawTripHandle = (p, label) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, HANDLE_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffea00';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#17242d';
+          ctx.font = 'bold 9px Inter';
+          ctx.fillText(label, p.x - 3, p.y + 3);
+        };
+        if (p2) {
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -231,21 +261,11 @@ export function Workbench() {
         ctx.fillText('CROSSING VECTOR', -42, -arrowLen - 5);
         ctx.restore();
 
-        const drawTripHandle = (p, label) => {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, HANDLE_RADIUS, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffea00';
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.fillStyle = '#17242d';
-          ctx.font = 'bold 9px Inter';
-          ctx.fillText(label, p.x - 3, p.y + 3);
-        };
-
-        drawTripHandle(p1, 'A');
-        drawTripHandle(p2, 'B');
+          drawTripHandle(p1, 'A');
+          if (p2) drawTripHandle(p2, 'B');
+        } else {
+          drawTripHandle(p1, 'A');
+        }
       }
     };
 
@@ -258,7 +278,7 @@ export function Workbench() {
     } else {
       render(null);
     }
-  }, [fence, tripwire, tripwireFlipped, framePreviewUrl, file, videoMode]);
+  }, [fence, fenceClosed, tripwire, tripwireFlipped, framePreviewUrl, file, videoMode, nativePointToCanvas]);
 
   useEffect(() => {
     drawCanvas();
@@ -274,24 +294,37 @@ export function Workbench() {
     };
   }
 
+  function getNativeCoords(e) {
+    return canvasPointToNative(getCanvasCoords(e));
+  }
+
   function handlePointerDown(e) {
     const { x, y } = getCanvasCoords(e);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
 
-    if (fence) {
-      for (let i = 0; i < fence.length; i++) {
-        if (Math.hypot(fence[i].x - x, fence[i].y - y) <= HANDLE_RADIUS + 5) {
+    if (tool === 'fence' && !fence) {
+      setFence([getNativeCoords(e)]);
+      setFenceClosed(false);
+      return;
+    }
+
+    if (tool === 'fence' && fence) {
+      const canvasFence = fence.map(nativePointToCanvas);
+      for (let i = 0; i < canvasFence.length; i++) {
+        if (Math.hypot(canvasFence[i].x - x, canvasFence[i].y - y) <= HANDLE_RADIUS + 5) {
           setDraggingHandle({ shape: 'fence', index: i });
           return;
         }
       }
 
-      for (let i = 0; i < fence.length; i++) {
-        const p1 = fence[i];
-        const p2 = fence[(i + 1) % fence.length];
+      const edgeCount = fenceClosed ? canvasFence.length : canvasFence.length - 1;
+      for (let i = 0; i < edgeCount; i++) {
+        const p1 = canvasFence[i];
+        const p2 = canvasFence[(i + 1) % canvasFence.length];
         const mx = (p1.x + p2.x) / 2;
         const my = (p1.y + p2.y) / 2;
         if (Math.hypot(mx - x, my - y) <= MIDPOINT_RADIUS + 5) {
-          const newPoint = { x: Math.round(x), y: Math.round(y) };
+          const newPoint = getNativeCoords(e);
           const updated = [...fence];
           updated.splice(i + 1, 0, newPoint);
           setFence(updated);
@@ -299,26 +332,40 @@ export function Workbench() {
           return;
         }
       }
+
+      if (!fenceClosed) {
+        setFence((points) => [...(points || []), getNativeCoords(e)]);
+        return;
+      }
     }
 
-    if (tripwire) {
-      for (let i = 0; i < tripwire.length; i++) {
-        if (Math.hypot(tripwire[i].x - x, tripwire[i].y - y) <= HANDLE_RADIUS + 5) {
+    if (tool === 'tripwire' && !tripwire) {
+      setTripwire([getNativeCoords(e)]);
+      return;
+    }
+
+    if (tool === 'tripwire' && tripwire) {
+      const canvasTripwire = tripwire.map(nativePointToCanvas);
+      for (let i = 0; i < canvasTripwire.length; i++) {
+        if (Math.hypot(canvasTripwire[i].x - x, canvasTripwire[i].y - y) <= HANDLE_RADIUS + 5) {
           setDraggingHandle({ shape: 'tripwire', index: i });
           return;
         }
+      }
+      if (tripwire.length < 2) {
+        setTripwire((points) => [...(points || []), getNativeCoords(e)]);
       }
     }
   }
 
   function handlePointerMove(e) {
     if (!draggingHandle) return;
-    const { x, y } = getCanvasCoords(e);
+    const point = getNativeCoords(e);
 
     if (draggingHandle.shape === 'fence') {
-      setFence((points) => points?.map((p, i) => (i === draggingHandle.index ? { x, y } : p)));
+      setFence((points) => points?.map((p, i) => (i === draggingHandle.index ? point : p)));
     } else if (draggingHandle.shape === 'tripwire') {
-      setTripwire((points) => points?.map((p, i) => (i === draggingHandle.index ? { x, y } : p)));
+      setTripwire((points) => points?.map((p, i) => (i === draggingHandle.index ? point : p)));
     }
   }
 
@@ -341,23 +388,20 @@ export function Workbench() {
   function removeVertex(index) {
     if (fence && fence.length > 3) {
       setFence(fence.filter((_, i) => i !== index));
+    } else if (fence && fence.length > 1) {
+      setFence(fence.filter((_, i) => i !== index));
+      setFenceClosed(false);
     }
   }
 
   function exportPayload() {
-    const scaleX = nativeRes.width / 800;
-    const scaleY = nativeRes.height / 450;
     const payload = {};
 
-    if (fence && fence.length >= 3) {
-      payload.fence_polygon = JSON.stringify(
-        fence.map((pt) => [Math.round(pt.x * scaleX), Math.round(pt.y * scaleY)])
-      );
+    if (fence && fenceClosed && fence.length >= 3) {
+      payload.fence_polygon = JSON.stringify(fence.map((pt) => [pt.x, pt.y]));
     }
     if (tripwire && tripwire.length === 2) {
-      payload.tripwire_line = JSON.stringify(
-        tripwire.map((pt) => [Math.round(pt.x * scaleX), Math.round(pt.y * scaleY)])
-      );
+      payload.tripwire_line = JSON.stringify(tripwire.map((pt) => [pt.x, pt.y]));
     }
     return payload;
   }
@@ -421,6 +465,7 @@ export function Workbench() {
     if (zones.tripwire_line) form.append('tripwire_line', zones.tripwire_line);
 
     form.append('max_duration', String(Math.min(60, maxDuration)));
+    form.append('enabled_classes', JSON.stringify(SUPPORTED_OBJECT_CLASSES));
     if (videoMode !== 'rgb') {
       form.append('night_mode', 'true');
     }
@@ -496,6 +541,7 @@ export function Workbench() {
                 className="clear-btn"
                 onClick={() => {
                   setFence(null);
+                  setFenceClosed(false);
                   setTripwire(null);
                 }}
               >
@@ -524,7 +570,7 @@ export function Workbench() {
               <button
                 type="button"
                 className="tool preset"
-                onClick={() => setFence(INITIAL_FENCE)}
+                onClick={() => { setFence(INITIAL_FENCE.map(canvasPointToNative)); setFenceClosed(true); }}
               >
                 + Add preset zone
               </button>
@@ -535,7 +581,7 @@ export function Workbench() {
                 <button
                   type="button"
                   className="tool preset"
-                  onClick={() => setTripwire(INITIAL_TRIPWIRE)}
+                  onClick={() => setTripwire(INITIAL_TRIPWIRE.map(canvasPointToNative))}
                 >
                   + Add preset tripwire
                 </button>
@@ -556,11 +602,13 @@ export function Workbench() {
           <div className="calibration-frame">
             <canvas
               ref={canvasRef}
+              className={draggingHandle ? 'drawing-canvas is-dragging' : 'drawing-canvas'}
               width="800"
               height="450"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
               onPointerLeave={handlePointerUp}
             />
             <div className="frame-meta">
@@ -583,14 +631,11 @@ export function Workbench() {
                 <div className="readout-header">
                   <span>Geometry scaled to {nativeRes.width}×{nativeRes.height}</span>
                   {fence && (
-                    <button
-                      type="button"
-                      className="remove-vert-btn"
-                      onClick={() => removeVertex(fence.length - 1)}
-                      disabled={fence.length <= 3}
-                    >
-                      Remove last vertex ({fence.length} pts)
-                    </button>
+                    <div className="geometry-actions">
+                      {!fenceClosed && fence.length >= 3 && <button type="button" className="remove-vert-btn" onClick={() => setFenceClosed(true)}>Close restricted zone</button>}
+                      {fenceClosed && <span className="zone-active-tag">ZONE ACTIVE</span>}
+                      <button type="button" className="remove-vert-btn" onClick={() => removeVertex(fence.length - 1)} disabled={fence.length <= 1}>Remove last vertex ({fence.length} pts)</button>
+                    </div>
                   )}
                 </div>
                 <code>{JSON.stringify(payloadPreview, null, 2)}</code>
@@ -671,7 +716,7 @@ export function Workbench() {
 
           <div className="workbench-subsection pipeline-status">
             <p className="eyebrow">Pipeline</p>
-            <div><span>Detection</span><b>Person</b></div>
+            <div><span>Detection</span><b>Configured object classes</b></div>
             <div><span>Tracking</span><b>ByteTrack</b></div>
             <div><span>Behavior</span><b>Awaiting inference</b></div>
           </div>
