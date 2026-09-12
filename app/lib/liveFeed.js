@@ -3,10 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 
 /**
- * Bridges a real IBVAP edge-analytics run (Workbench.jsx) to any other part of
- * the app (e.g. the homepage Dashboard) so the UI reflects an ACTUAL YOLO11n +
- * ByteTrack inference result instead of fabricated placeholder data whenever
- * one is available. Falls back gracefully when nothing has been run yet.
+ * Bridges a workbench inference run to the homepage HUD so real annotated
+ * video and perimeter events replace the labeled demo overlay when available.
  */
 
 export const STORAGE_KEY = 'sentryx_last_analysis';
