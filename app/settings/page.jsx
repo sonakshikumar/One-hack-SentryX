@@ -1,32 +1,86 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { checkApiHealth, getApiBaseUrl } from '../lib/apiConfig';
-import { DEFAULT_SURVEILLANCE_CONFIG, loadSurveillanceConfig, saveSurveillanceConfig } from '../lib/surveillanceConfig';
+import { useApiConfig, checkApiHealth, DEFAULT_API_BASE } from '../lib/apiConfig';
 
 export default function SettingsPage() {
-  const [config, setConfig] = useState(DEFAULT_SURVEILLANCE_CONFIG);
+  const { baseUrl, setBaseUrl, resetBaseUrl, swaggerUrl, fullPipelineEndpoint, anprEndpoint } = useApiConfig();
+  const [inputUrl, setInputUrl] = useState(baseUrl);
+  const [healthStatus, setHealthStatus] = useState(null);
+  const [testing, setTesting] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copiedEndpoint, setCopiedEndpoint] = useState('');
+
+  // Surveillance presets
+  const [defaultDuration, setDefaultDuration] = useState(120);
+  const [defaultAnpr, setDefaultAnpr] = useState(true);
+  const [defaultNight, setDefaultNight] = useState(false);
   const [presetSaved, setPresetSaved] = useState(false);
-  const [engine, setEngine] = useState({ ok: false, message: 'Not connected' });
 
   useEffect(() => {
-    setConfig(loadSurveillanceConfig());
-    const url = getApiBaseUrl();
-    if (!url) {
-      setEngine({ ok: false, message: 'Offline' });
-      return;
+    setInputUrl(baseUrl);
+  }, [baseUrl]);
+
+  useEffect(() => {
+    try {
+      const savedDuration = localStorage.getItem('ibvap_default_duration');
+      const savedAnpr = localStorage.getItem('ibvap_default_anpr');
+      const savedNight = localStorage.getItem('ibvap_default_night');
+      if (savedDuration) setDefaultDuration(Number(savedDuration));
+      if (savedAnpr !== null) setDefaultAnpr(savedAnpr === 'true');
+      if (savedNight !== null) setDefaultNight(savedNight === 'true');
+    } catch {
+      // ignore
     }
-    checkApiHealth(url).then((r) => setEngine({ ok: r.ok, message: r.ok ? 'Connected' : 'Offline' }));
   }, []);
 
-  const update = (key, value) => setConfig((c) => ({ ...c, [key]: value }));
-
-  const handleSave = () => {
-    saveSurveillanceConfig(config);
-    setPresetSaved(true);
-    setTimeout(() => setPresetSaved(false), 3000);
+  const handleSaveUrl = (e) => {
+    e?.preventDefault();
+    const updated = setBaseUrl(inputUrl);
+    setInputUrl(updated);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
+
+  const handleResetUrl = () => {
+    const updated = resetBaseUrl();
+    setInputUrl(updated);
+    setSaveSuccess(true);
+    setHealthStatus(null);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const handleTestConnection = async () => {
+    setTesting(true);
+    setHealthStatus(null);
+    const result = await checkApiHealth(inputUrl);
+    setHealthStatus(result);
+    setTesting(false);
+  };
+
+  const handleSavePresets = () => {
+    try {
+      localStorage.setItem('ibvap_default_duration', String(defaultDuration));
+      localStorage.setItem('ibvap_default_anpr', String(defaultAnpr));
+      localStorage.setItem('ibvap_default_night', String(defaultNight));
+      window.dispatchEvent(new CustomEvent('ibvap_presets_changed', {
+        detail: { duration: defaultDuration, anpr: defaultAnpr, night: defaultNight }
+      }));
+      setPresetSaved(true);
+      setTimeout(() => setPresetSaved(false), 3000);
+    } catch {
+      // ignore
+    }
+  };
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedEndpoint(label);
+    setTimeout(() => setCopiedEndpoint(''), 2500);
+  };
+
+  const isDefault = inputUrl.trim().replace(/\/+$/, '') === DEFAULT_API_BASE;
 
   return (
     <div className="page settings-page">
@@ -34,203 +88,249 @@ export default function SettingsPage() {
         <div className="settings-header">
           <div>
             <div className="breadcrumbs">
-              <span>SentryX</span>
+              <Link href="/">Overview</Link>
               <span>/</span>
               <span>Settings</span>
             </div>
-            <p className="eyebrow">Configuration</p>
-            <h1>SentryX AI Surveillance Settings</h1>
+            <p className="eyebrow">Tactical Platform Configuration</p>
+            <h1>IBVAP Gateway & System Settings</h1>
             <p className="lead">
-              Video, perimeter, detection, behavior, alerts, and models. Saved in this browser until a database is connected.
+              Configure Intelligent Border Video Analytics Platform (SSB / MHA) gateway endpoints, verify edge latency, and customize pipeline defaults.
             </p>
+          </div>
+          <div className="header-badge-wrap">
+            <span className={`status-pill ${healthStatus?.ok ? 'active' : healthStatus ? 'error' : ''}`}>
+              <span className="dot" />
+              {healthStatus?.ok
+                ? `Online · ${healthStatus.latency}ms`
+                : healthStatus
+                ? 'Check Gateway'
+                : 'Gateway Configured'}
+            </span>
           </div>
         </div>
 
         <div className="settings-grid">
+          {/* Card 1: Base URL Gateway */}
           <div className="panel settings-card">
             <div className="card-top">
               <div>
-                <p className="eyebrow">01 · Video Input</p>
-                <h3>Drone feed source &amp; mode</h3>
+                <p className="eyebrow">01 · Edge Gateway</p>
+                <h3>API Gateway Base URL</h3>
+              </div>
+              <a
+                href={swaggerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="swagger-btn"
+                title="Open Interactive Swagger Documentation"
+              >
+                Swagger Docs ↗
+              </a>
+            </div>
+            <p className="card-desc">
+              All master surveillance and ANPR requests route to this host. Custom deployment tunnels, on-prem edge appliances, or staging gateways can be specified here.
+            </p>
+
+            <form onSubmit={handleSaveUrl} className="gateway-form">
+              <label className="input-group">
+                <span className="input-label">Gateway Base URL</span>
+                <div className="input-wrap">
+                  <input
+                    type="url"
+                    value={inputUrl}
+                    onChange={(e) => setInputUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="text-input font-mono"
+                    required
+                  />
+                  {isDefault && <span className="default-tag">Default (Cloudflare Tunnel)</span>}
+                </div>
+              </label>
+
+              <div className="btn-row">
+                <button type="submit" className="button dark">
+                  Save Gateway URL
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={testing}
+                  className="button outline"
+                >
+                  {testing ? 'Probing Gateway…' : 'Test Connection ⚡'}
+                </button>
+                {!isDefault && (
+                  <button
+                    type="button"
+                    onClick={handleResetUrl}
+                    className="button light reset-btn"
+                  >
+                    Reset to Default
+                  </button>
+                )}
+              </div>
+
+              {saveSuccess && (
+                <div className="notification success">
+                  ✓ Base URL saved successfully. Connected components updated in real-time.
+                </div>
+              )}
+
+              {healthStatus && (
+                <div className={`notification ${healthStatus.ok ? 'success' : 'error'}`}>
+                  <b>{healthStatus.ok ? 'Connection Verified' : 'Gateway Unreachable'}:</b> {healthStatus.message}
+                  {healthStatus.ok && <span> (HTTP {healthStatus.status})</span>}
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* Card 2: Active Pipeline Endpoints */}
+          <div className="panel settings-card">
+            <div className="card-top">
+              <div>
+                <p className="eyebrow">02 · Pipeline Endpoints</p>
+                <h3>Integrated Analytics Interfaces</h3>
               </div>
             </div>
-            <div className="presets-form">
-              <label className="input-group">
-                <span className="input-label">Source</span>
-                <select className="text-input" value={config.inputSource} onChange={(e) => update('inputSource', e.target.value)}>
-                  <option value="upload">Uploaded video</option>
-                  <option value="drone">Drone feed</option>
-                </select>
-              </label>
-              <label className="input-group">
-                <span className="input-label">Video mode</span>
-                <select className="text-input" value={config.videoMode} onChange={(e) => update('videoMode', e.target.value)}>
-                  <option value="thermal">Thermal</option>
-                  <option value="lowlight">Low-light</option>
-                  <option value="rgb">RGB (optional reference)</option>
-                </select>
-              </label>
-              <label className="range-label">
-                <span>Maximum analysis duration</span>
-                <output>{config.maxDuration}s</output>
-                <input type="range" min="5" max="60" step="5" value={config.maxDuration} onChange={(e) => update('maxDuration', Number(e.target.value))} />
-              </label>
+            <p className="card-desc">
+              Direct endpoints mounted for edge processing. Video feeds are streamed via <code>multipart/form-data</code> and return binary MP4 streams with telemetry headers.
+            </p>
+
+            <div className="endpoints-list">
+              <div className="endpoint-item">
+                <div className="endpoint-badge post">POST</div>
+                <div className="endpoint-details">
+                  <div className="endpoint-header">
+                    <b>/api/v1/analytics/full</b>
+                    <span className="tag">Master Pipeline v2.0</span>
+                  </div>
+                  <div className="endpoint-url font-mono">{fullPipelineEndpoint}</div>
+                  <p className="endpoint-sub">
+                    YOLO11n lightweight multi-class tracking, ByteTrack temporal identities, virtual fence polygon & demarcation tripwire vector geometry checks with 2x frame stride and ultrafast H.264 streaming.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(fullPipelineEndpoint, 'full')}
+                  className="copy-btn"
+                  title="Copy Full URL"
+                >
+                  {copiedEndpoint === 'full' ? 'Copied ✓' : 'Copy'}
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Card 3: Telemetry & Response Headers Protocol */}
           <div className="panel settings-card">
             <div className="card-top">
               <div>
-                <p className="eyebrow">02 · Perimeter Configuration</p>
-                <h3>Restricted zones &amp; tripwires</h3>
+                <p className="eyebrow">03 · Protocol Reference</p>
+                <h3>Telemetry & Response Headers</h3>
               </div>
             </div>
-            <p className="card-desc">Geometry is drawn on Drone Surveillance. Sensitivity applies to later scoring.</p>
-            <div className="presets-form">
-              <label className="input-group">
-                <span className="input-label">Zone sensitivity</span>
-                <select className="text-input" value={config.zoneSensitivity} onChange={(e) => update('zoneSensitivity', e.target.value)}>
-                  <option value="low">Low</option>
-                  <option value="standard">Standard</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
+            <p className="card-desc">
+              IBVAP outputs real-time threat telemetry and alert logs directly in the HTTP response headers alongside the annotated binary video stream:
+            </p>
+
+            <div className="headers-table-wrap">
+              <table className="headers-table">
+                <thead>
+                  <tr>
+                    <th>Header</th>
+                    <th>Format</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>X-IBVAP-Breach-Count</code></td>
+                    <td><code>Integer</code></td>
+                    <td>Total perimeter breaches and tripwire crossings recorded.</td>
+                  </tr>
+                  <tr>
+                    <td><code>X-IBVAP-Plates-Detected</code></td>
+                    <td><code>JSON Object</code></td>
+                    <td>Track ID to detected license plate string mapping (e.g. <code>&#123;&quot;2&quot;: &quot;UP16AX1234&quot;&#125;</code>).</td>
+                  </tr>
+                  <tr>
+                    <td><code>X-IBVAP-Alerts-JSON</code></td>
+                    <td><code>Base64 String</code></td>
+                    <td>Base64-encoded array of detailed tactical incident alert objects with timestamps and track IDs.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
+          {/* Card 4: Default Operational Presets */}
           <div className="panel settings-card">
             <div className="card-top">
               <div>
-                <p className="eyebrow">03 · Detection Settings</p>
-                <h3>Confidence &amp; classes</h3>
+                <p className="eyebrow">04 · Defaults</p>
+                <h3>Surveillance Processing Presets</h3>
               </div>
             </div>
+            <p className="card-desc">
+              Define operational default parameters automatically populated in the Tactical Workbench.
+            </p>
+
             <div className="presets-form">
               <label className="range-label">
-                <span>Confidence threshold</span>
-                <output>{Number(config.confThreshold).toFixed(2)}</output>
-                <input type="range" min="0.1" max="0.9" step="0.05" value={config.confThreshold} onChange={(e) => update('confThreshold', Number(e.target.value))} />
+                <span>Default Max Duration (seconds)</span>
+                <output>{defaultDuration}s</output>
+                <input
+                  type="range"
+                  min="10"
+                  max="480"
+                  step="10"
+                  value={defaultDuration}
+                  onChange={(e) => setDefaultDuration(Number(e.target.value))}
+                />
               </label>
-              <label className="input-group">
-                <span className="input-label">Detection class</span>
-                <select className="text-input" value={config.detectionClass} onChange={(e) => update('detectionClass', e.target.value)}>
-                  <option value="person">Person</option>
-                </select>
-              </label>
-            </div>
-          </div>
 
-          <div className="panel settings-card">
-            <div className="card-top">
-              <div>
-                <p className="eyebrow">04 · Behavior Settings</p>
-                <h3>Motion thresholds</h3>
+              <div className="switches preset-switches">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={defaultAnpr}
+                    onChange={(e) => setDefaultAnpr(e.target.checked)}
+                  />
+                  <span />
+                  Automatic ANPR recognition enabled by default
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={defaultNight}
+                    onChange={(e) => setDefaultNight(e.target.checked)}
+                  />
+                  <span />
+                  Night mode / Dynamic CLAHE enhancement enabled by default
+                </label>
               </div>
-            </div>
-            <div className="presets-form">
-              <label className="range-label">
-                <span>Dwell threshold (seconds)</span>
-                <output>{config.dwellThreshold}s</output>
-                <input type="range" min="2" max="30" step="1" value={config.dwellThreshold} onChange={(e) => update('dwellThreshold', Number(e.target.value))} />
-              </label>
-              <label className="range-label">
-                <span>Low-speed threshold (m/s)</span>
-                <output>{Number(config.speedThreshold).toFixed(1)}</output>
-                <input type="range" min="0.2" max="3" step="0.1" value={config.speedThreshold} onChange={(e) => update('speedThreshold', Number(e.target.value))} />
-              </label>
-              <label className="range-label">
-                <span>Boundary approach (px, canvas)</span>
-                <output>{config.approachThreshold}</output>
-                <input type="range" min="4" max="40" step="1" value={config.approachThreshold} onChange={(e) => update('approachThreshold', Number(e.target.value))} />
-              </label>
-            </div>
-          </div>
 
-          <div className="panel settings-card">
-            <div className="card-top">
-              <div>
-                <p className="eyebrow">05 · Alert Settings</p>
-                <h3>Risk threshold &amp; severity</h3>
+              <div className="btn-row" style={{ marginTop: '18px' }}>
+                <button type="button" onClick={handleSavePresets} className="button dark">
+                  Save Operational Defaults
+                </button>
+                <Link href="/" className="button outline">
+                  Return to Tactical Workbench →
+                </Link>
               </div>
-            </div>
-            <div className="presets-form">
-              <label className="range-label">
-                <span>Risk threshold</span>
-                <output>{config.riskThreshold}</output>
-                <input type="range" min="10" max="95" step="5" value={config.riskThreshold} onChange={(e) => update('riskThreshold', Number(e.target.value))} />
-              </label>
-              <label className="input-group">
-                <span className="input-label">Minimum alert severity</span>
-                <select className="text-input" value={config.alertSeverity} onChange={(e) => update('alertSeverity', e.target.value)}>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
-            </div>
-          </div>
 
-          <div className="panel settings-card">
-            <div className="card-top">
-              <div>
-                <p className="eyebrow">06 · Model</p>
-                <h3>Detection, tracking, behavior</h3>
-              </div>
+              {presetSaved && (
+                <div className="notification success">
+                  ✓ Operational presets saved and synced.
+                </div>
+              )}
             </div>
-            <div className="presets-form">
-              <label className="input-group">
-                <span className="input-label">Detection model</span>
-                <select className="text-input" value={config.detectionModel} onChange={(e) => update('detectionModel', e.target.value)}>
-                  <option value="thermal-person-v1">Thermal Person Detector</option>
-                  <option value="yolo11n">YOLO11n (person)</option>
-                </select>
-              </label>
-              <label className="input-group">
-                <span className="input-label">Tracking model</span>
-                <select className="text-input" value={config.trackingModel} onChange={(e) => update('trackingModel', e.target.value)}>
-                  <option value="bytetrack">ByteTrack</option>
-                </select>
-              </label>
-              <label className="input-group">
-                <span className="input-label">Behavior model</span>
-                <select className="text-input" value={config.behaviorModel} onChange={(e) => update('behaviorModel', e.target.value)}>
-                  <option value="behavior-v0.1">Behavior Classifier v0.1</option>
-                </select>
-              </label>
-              <label className="input-group">
-                <span className="input-label">Model version</span>
-                <input className="text-input font-mono" value={config.modelVersion} onChange={(e) => update('modelVersion', e.target.value)} />
-              </label>
-            </div>
-          </div>
-
-          <div className="panel settings-card">
-            <div className="card-top">
-              <div>
-                <p className="eyebrow">AI inference engine</p>
-                <h3>SentryX Vision</h3>
-              </div>
-              <span className={`status-pill ${engine.ok ? 'active' : 'error'}`}>
-                <span className="dot" />
-                {engine.ok ? 'Connected' : engine.message}
-              </span>
-            </div>
-            <div className="kv-grid">
-              <div><span>Engine</span><b>SentryX Vision</b></div>
-              <div><span>Version</span><b>0.1.0</b></div>
-              <div><span>Mode</span><b>GPU inference</b></div>
-              <div><span>Status</span><b>{engine.ok ? 'Connected' : 'Offline'}</b></div>
-            </div>
-            <p className="card-desc">The service URL is read from the environment. It is not shown in the operator UI.</p>
           </div>
         </div>
-
-        <div className="btn-row" style={{ marginTop: '18px' }}>
-          <button type="button" onClick={handleSave} className="button dark">Save surveillance settings</button>
-          <Link href="/drone-surveillance" className="button outline">Return to analysis →</Link>
-        </div>
-        {presetSaved && <div className="notification success" style={{ marginTop: 12 }}>✓ Settings saved for this browser.</div>}
       </section>
     </div>
   );
 }
+

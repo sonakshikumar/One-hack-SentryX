@@ -2,6 +2,7 @@ export const CONFIG_STORAGE_KEY = 'sentryx_surveillance_config';
 export const CONFIG_EVENT = 'sentryx_presets_changed';
 
 export const DEFAULT_SURVEILLANCE_CONFIG = {
+  aiServiceUrl: '',
   inputSource: 'upload',
   videoMode: 'thermal',
   maxDuration: 15,
