@@ -14,10 +14,14 @@ from pathlib import Path
 import cv2
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from ultralytics import YOLO
 
-from .movement import centroid, movement_features, point_in_polygon, tripwire_crossed
+try:
+    from .movement import centroid, movement_features, point_in_polygon, tripwire_crossed
+except ImportError:  # supports `uvicorn main:app` from the backend directory
+    from movement import centroid, movement_features, point_in_polygon, tripwire_crossed
 
 logging.basicConfig(level=os.getenv("SENTRYX_LOG_LEVEL", "INFO"))
 log = logging.getLogger("sentryx")
@@ -33,6 +37,9 @@ MODEL = None
 MODEL_ERROR = None
 
 app = FastAPI(title="SentryX AI Service", version="1.0.0")
+configured_origins = [origin.strip() for origin in os.getenv("SENTRYX_CORS_ORIGINS", "").split(",") if origin.strip()]
+cors_origins = configured_origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+app.add_middleware(CORSMiddleware, allow_origins=cors_origins, allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Accept", "Content-Type"])
 
 
 @app.on_event("startup")
