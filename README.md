@@ -1,40 +1,43 @@
 # SentryX Backend
 
-## Kya hai ye
+Backend service for the SentryX border surveillance system. Handles video
+ingestion, detection storage, alerts, and analytics, and connects to the
+AI detection model.
 
-Ye backend hai jo Sonakshi ke frontend (SentryX) se connect hoga. Video + zone
-coordinates leta hai, detection chalata hai, result database mein save karta
-hai, aur frontend ko wapas bhejta hai.
+## Stack
 
-## Files (kya kaam karti hai)
+- **FastAPI** — REST API framework
+- **SQLAlchemy** — ORM
+- **SQLite** (local dev) — swappable for a cloud DB via `config.py`
 
-| File | Kaam |
+## Project structure
+
+| File | Purpose |
 |---|---|
-| `main.py` | Saare API endpoints yahan hain. Sabse important file. |
-| `models.py` | Database tables define karti hai (VideoSession, Detection, Alert, Drone). |
-| `database.py` | SQLite database se connect karne ka setup. |
-| `detection.py` | **Sirf ye file change hogi** jab real YOLO model ready ho. Abhi dummy/fake detections deta hai. |
-| `config.py` | Yahan Kaggle tunnel ka URL daalna hai jab mile (`AI_MODEL_URL`). |
+| `main.py` | API endpoints |
+| `models.py` | Database schema (VideoSession, Detection, Alert, Drone) |
+| `database.py` | DB connection setup |
+| `detection.py` | Detection logic — currently returns simulated detections; swap in the real model call here once available |
+| `config.py` | AI model endpoint configuration |
 
-## Kaise chalayein
+## Setup
 
 ```bash
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-Phir browser mein: `http://127.0.0.1:8000/docs` — yahan saare endpoints test
-kar sakte ho, bina frontend ke bhi.
+API docs available at `http://127.0.0.1:8000/docs`.
 
 ## Main endpoint
 
-`POST /api/analyze` — video file + zones (JSON) leta hai, detection chalata
-hai, breach count + alerts + incident report wapas deta hai. Ye wahi endpoint
-hai jo frontend ke `NEXT_PUBLIC_IBVAP_API_BASE_URL` se call hoga.
+`POST /api/analyze` — accepts a video file and zone coordinates
+(`multipart/form-data`), returns detections, breach count, alerts, and an
+incident report.
 
-## Jab real AI model (YOLO) ready ho jaye
+## Connecting the real detection model
 
-1. `config.py` mein `AI_MODEL_URL` set karo (Kaggle tunnel ka link)
-2. `detection.py` mein `_call_real_model()` function ko complete karo
-   (example code already comment mein diya hai)
-3. Baaki kuch change nahi karna — `main.py`, database, sab waisa hi rahega
+1. Set `AI_MODEL_URL` in `config.py`
+2. Implement `_call_real_model()` in `detection.py`
+
+No other changes required — the rest of the backend is model-agnostic.
