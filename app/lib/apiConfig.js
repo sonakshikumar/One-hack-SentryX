@@ -77,21 +77,31 @@ export async function checkApiHealth(url) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
-    // The existing Python service exposes its OpenAPI docs route, not /health.
-    const response = await fetch(`${target}/docs`, { method: 'GET', signal: controller.signal });
+    const response = await fetch(`${target}/health`, { method: 'GET', signal: controller.signal, headers: { Accept: 'application/json' } });
     clearTimeout(timeoutId);
     const latency = Math.round(performance.now() - startTime);
     if (!response.ok) {
-      if (response.status === 404) return { ok: false, state: 'endpoint-not-found', latency, message: 'AI service reached, but the configured test endpoint was not found.' };
+      if (response.status === 404) return { ok: false, state: 'endpoint-not-found', latency, message: 'AI service reached, but /health was not found.' };
       if (response.status >= 500) return { ok: false, state: 'server-error', latency, message: 'AI service returned an internal error.' };
       return { ok: false, state: 'error', latency, message: `AI service returned HTTP ${response.status}.` };
+    }
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      return { ok: false, state: 'error', latency, message: 'AI service returned an unexpected response.' };
+    }
+    if (payload?.service !== 'sentryx-ai' || payload?.status !== 'ok' || payload?.model_loaded !== true) {
+      return { ok: false, state: 'not-ready', latency, message: 'AI service responded, but the SentryX model is not ready.' };
     }
     return {
       ok: true,
       state: 'connected',
       latency,
       status: response.status,
-      message: 'Connected to the AI service.'
+      message: 'Connected to SentryX AI.',
+      service: payload.service,
+      device: payload.device
     };
   } catch (err) {
     clearTimeout(timeoutId);
@@ -99,7 +109,9 @@ export async function checkApiHealth(url) {
       ok: false,
       state: 'offline',
       latency: Math.round(performance.now() - startTime),
-      message: err.name === 'AbortError' ? 'AI service unreachable: connection timed out.' : 'AI service unreachable.'
+      message: err.name === 'AbortError'
+        ? 'AI service request timed out.'
+        : 'Browser could not access the AI service. Check CORS or network access.'
     };
   }
 }

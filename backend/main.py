@@ -7,6 +7,8 @@ stored in this repository; configure SENTRYX_MODEL_PATH in the deployment.
 import json
 import logging
 import os
+import shutil
+import subprocess
 import tempfile
 import time
 from pathlib import Path
@@ -117,6 +119,38 @@ def run_detection(frame):
     return merged
 
 
+def encode_browser_video(source_path, output_path, fps, width, height):
+    """Transcode the OpenCV intermediate into browser-friendly H.264 MP4."""
+    ffmpeg = shutil.which("ffmpeg")
+    ffprobe = shutil.which("ffprobe")
+    if not ffmpeg or not ffprobe:
+        raise RuntimeError("FFmpeg and ffprobe are required to encode and validate browser-compatible H.264 output")
+    encoder_probe = subprocess.run([ffmpeg, "-hide_banner", "-encoders"], capture_output=True, text=True, check=False)
+    if " libx264 " not in encoder_probe.stdout:
+        raise RuntimeError("FFmpeg does not provide the required libx264 encoder")
+    log.info("[VIDEO] Intermediate output: %s", source_path)
+    log.info("[VIDEO] Transcoding to H.264...")
+    command = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", source_path, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", output_path]
+    subprocess.run(command, check=True)
+    if not os.path.exists(output_path) or os.path.getsize(output_path) <= 0:
+        raise RuntimeError("FFmpeg produced an empty output video")
+    probe = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,codec_type,pix_fmt,width,height,duration", "-of", "json", output_path], capture_output=True, text=True, check=True)
+    streams = json.loads(probe.stdout).get("streams", [])
+    stream = streams[0] if streams else {}
+    codec = stream.get("codec_name")
+    codec_type = stream.get("codec_type")
+    pixel_format = stream.get("pix_fmt")
+    duration = float(stream.get("duration") or 0)
+    final_width = int(stream.get("width") or 0)
+    final_height = int(stream.get("height") or 0)
+    if codec != "h264" or codec_type != "video" or pixel_format != "yuv420p" or duration <= 0 or final_width <= 0 or final_height <= 0:
+        raise RuntimeError(f"Invalid encoded video: codec={codec} type={codec_type} pixel_format={pixel_format} duration={duration} dimensions={final_width}x{final_height}")
+    log.info("[VIDEO] FFmpeg completed")
+    log.info("[VIDEO] Final codec: %s", codec)
+    log.info("[VIDEO] Final duration: %.3f", duration)
+    log.info("[VIDEO] Final size: %s", os.path.getsize(output_path))
+
+
 @app.post("/api/v1/analytics/full")
 async def analytics_full(
     video_file: UploadFile = File(...),
@@ -135,6 +169,7 @@ async def analytics_full(
     tripwire = parse_points(tripwire_line, "tripwire_line")
     allowed = set(json.loads(enabled_classes)) if enabled_classes else None
     temp_path = None
+    intermediate_path = None
     output_path = None
     previous_centers = {}
     alerts = []
@@ -149,8 +184,11 @@ async def analytics_full(
         width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = capture.get(cv2.CAP_PROP_FPS) or 30.0
+        intermediate_path = tempfile.mktemp(suffix=".avi")
         output_path = tempfile.mktemp(suffix=".mp4")
-        writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+        writer = cv2.VideoWriter(intermediate_path, cv2.VideoWriter_fourcc(*"MJPG"), fps, (width, height))
+        if not writer.isOpened():
+            raise HTTPException(500, "Could not initialize video encoder")
         frame_index = 0
         started = time.perf_counter()
         while frame_index < max_duration * fps:
@@ -177,13 +215,18 @@ async def analytics_full(
             frame_index += 1
         capture.release()
         writer.release()
+        try:
+            encode_browser_video(intermediate_path, output_path, fps, width, height)
+        except (OSError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+            log.exception("[VIDEO] Browser-compatible encoding failed")
+            raise HTTPException(500, f"Could not produce a validated H.264 MP4: {exc}") from exc
         elapsed = time.perf_counter() - started
         log.info("Processed frames=%s detections=%s fps=%.2f", frame_index, sum(1 for _ in alerts), frame_index / elapsed if elapsed else 0)
         with open(output_path, "rb") as output:
             video = output.read()
         return Response(content=video, media_type="video/mp4", headers={"X-SentryX-Breach-Count": str(breaches), "X-SentryX-Alerts-JSON": json.dumps(alerts)})
     finally:
-        for path in (temp_path, output_path):
+        for path in (temp_path, intermediate_path, output_path):
             if path:
                 try: os.unlink(path)
                 except OSError: pass
