@@ -1,15 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
-// These are real, publicly accessible reports and announcements—not invented case studies.
 const reports = [
-  { region: 'INDIA · MAY 2026', source: 'Drone Federation India', title: 'Smart Border Project announced for 6,000 KM frontiers', copy: 'The Ministry of Home Affairs announced the deployment of AI surveillance and integrated real-time alert systems across borders to counter infiltration, validating the urgent shift from manual CCTV monitoring to automated intelligence.', linkText: 'Read the report - Drone Federation India', href: 'https://www.dronefederation.in/media-hub/smart-border-project-to-deploy-drone-radars-and-ai-surveillance-across-pakistan-and-bangladesh', image: 'https://images.unsplash.com/photo-1517148815978-75f6acaaf32c?auto=format&fit=crop&w=900&q=80' },
-  { region: 'TRIPURA, INDIA · JULY 2024', source: 'OECD AI Observatory', title: 'BSF deploys AI to curb border infiltration', copy: 'The Border Security Force has actively deployed AI-enabled cameras and facial recognition systems along the India-Bangladesh border, highlighting the immediate operational demand for intelligent surveillance over standard video recording.', linkText: 'Read the report - OECD AI Observatory', href: 'https://oecd.ai/en/incidents/2024-07-04-80e5', image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=900&q=80' },
-  { region: 'INDIA · MAY 2026', source: 'Defence & Market News', title: 'The shift to AI-driven border defense', copy: 'Domestic defense technology firms are launching Integrated Smart Border Suites to modernize surveillance, emphasizing the critical need for software that performs real-time threat detection and virtual fencing without continuous human observation.', linkText: 'Read the report - Defence & Market News', href: 'https://www.sahi.com/news/zen-technologies-launches-india-s-first-smart-border-suite-to-secure-6-000-km-international-borders-3258-PE1_COR', image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=900&q=80' },
-  { region: 'GLOBAL · 2024 EVALUATION', source: 'NIST', title: 'Face in Video Evaluation (FIVE)', copy: 'NIST evaluates whether face-recognition algorithms can identify—or correctly ignore—people appearing in degraded real-world video sequences.', href: 'https://www.nist.gov/programs-projects/face-video-evaluation-five', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80' },
-  { region: 'EUROPE · 2026 PROJECT REPORT', source: 'CORDIS / European Commission', title: 'EURMARS: multi-authority border security', copy: 'The project combines ground, UAV, satellite, AI detection, tracking, behaviour analysis, and a shared command-and-control environment.', href: 'https://cordis.europa.eu/project/id/101073985/reporting/es', image: 'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=80' },
-  { region: 'EUROPE · HORIZON PROJECT', source: 'CORDIS / European Commission', title: 'PopEye: privacy-preserving border biometrics', copy: 'A research project explores on-the-move biometric verification while explicitly addressing GDPR, AI Act compliance, bias, and data protection.', href: 'https://cordis.europa.eu/project/id/101168317', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80' }
+  { region: 'DATA', source: 'Project', title: 'Thermal video sources', copy: 'Public thermal surveillance or aerial sequences used for detection under heat-signature conditions. Named datasets are listed only when evaluation uses them.', href: '/resources' },
+  { region: 'DATA', source: 'Project', title: 'Low-light video sources', copy: 'Night and near-dark footage for movement analysis when RGB is unreliable.', href: '/resources' },
+  { region: 'MODELS', source: 'Pipeline', title: 'Detection and tracking', copy: 'Person detection with multi-object tracking. Behavior classification remains a prototype stage.', href: '/demo' }
 ];
 
 export function NewsCarousel() {
@@ -17,5 +14,32 @@ export function NewsCarousel() {
   const visible = reports.slice(start, start + 3);
   const next = () => setStart((value) => (value + 1) % reports.length);
   const previous = () => setStart((value) => (value - 1 + reports.length) % reports.length);
-  return <section className="field-reports section"><div className="reports-heading"><div><p className="eyebrow">Real-world reports · verified sources</p><h2>AI border surveillance is a critical necessity</h2><p>Recent government mandates and defense reports—not hypothetical scenarios.</p></div><div className="carousel-controls"><button type="button" onClick={previous} aria-label="Previous reports">←</button><span>{String(start + 1).padStart(2, '0')} — {String(Math.min(start + 3, reports.length)).padStart(2, '0')}</span><button type="button" onClick={next} aria-label="Next reports">→</button></div></div><div className="reports-track">{visible.map((report) => <article className="report-card" key={report.title}><img src={report.image} alt=""/><div className="report-body"><div className="report-meta"><span>{report.region}</span><b>{report.source}</b></div><h3>{report.title}</h3><p>{report.copy}</p><a href={report.href} target="_blank" rel="noreferrer">{report.linkText || 'Read the report'} <b>↗</b></a></div></article>)}</div><div className="carousel-dots">{reports.map((report, index) => <button type="button" key={report.title} className={index === start ? 'active' : ''} onClick={() => setStart(index)} aria-label={`Show report ${index + 1}`} />)}</div><p className="reports-note">Sources open in a new tab. SentryX shares these references for context; reported results do not represent SentryX performance claims.</p></section>;
+  return (
+    <section className="field-reports section">
+      <div className="reports-heading">
+        <div>
+          <p className="eyebrow">Technical notes</p>
+          <h2>Datasets, models, evaluation</h2>
+          <p>Project documentation — not news or deployment claims.</p>
+        </div>
+        <div className="carousel-controls">
+          <button type="button" onClick={previous} aria-label="Previous">←</button>
+          <span>{String(start + 1).padStart(2, '0')} — {String(Math.min(start + 3, reports.length)).padStart(2, '0')}</span>
+          <button type="button" onClick={next} aria-label="Next">→</button>
+        </div>
+      </div>
+      <div className="reports-track">
+        {visible.map((report) => (
+          <article className="report-card" key={report.title}>
+            <div className="report-body">
+              <div className="report-meta"><span>{report.region}</span><b>{report.source}</b></div>
+              <h3>{report.title}</h3>
+              <p>{report.copy}</p>
+              <Link href={report.href}>Open <b>→</b></Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }
