@@ -68,6 +68,7 @@ async def analyze_video(
             session_id=session.id,
             track_id=d["track_id"],
             object_type=d["object_type"],
+            movement_type=d.get("movement_type", "walking"),
             confidence=d["confidence"],
             frame_number=d["frame_number"],
             bbox_x1=d["bbox"][0],

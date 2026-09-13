@@ -27,6 +27,7 @@ class Detection(Base):
     session_id = Column(Integer, ForeignKey("video_sessions.id"))
     track_id = Column(Integer, nullable=True)  # persistent ID across frames for the same object
     object_type = Column(String)  # "person", "vehicle", "animal", etc.
+    movement_type = Column(String, default="walking")  # "walking", "crouching", "crawling", "group"
     confidence = Column(Float)
     frame_number = Column(Integer)
     bbox_x1 = Column(Float)

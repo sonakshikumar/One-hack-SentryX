@@ -36,17 +36,20 @@ def run_detection(video_path: str, zones: list):
 def _fake_detections(zones: list):
     """Generates plausible-looking fake detections for demo purposes."""
     object_types = ["person", "person", "vehicle", "animal"]
+    movement_types = ["walking", "crouching", "crawling", "group"]
     detections = []
     for i in range(random.randint(3, 8)):
         obj_type = random.choice(object_types)
+        move_type = random.choice(movement_types) if obj_type == "person" else "n/a"
         x1, y1 = random.randint(50, 1500), random.randint(50, 800)
         detections.append({
             "track_id": i + 1,
             "object_type": obj_type,
+            "movement_type": move_type,
             "confidence": round(random.uniform(0.75, 0.98), 2),
             "frame_number": random.randint(1, 500),
             "bbox": [x1, y1, x1 + random.randint(60, 150), y1 + random.randint(100, 250)],
-            "zone_breach": obj_type == "person" and random.random() > 0.5,
+            "zone_breach": obj_type == "person" and move_type in ("crouching", "crawling") and random.random() > 0.3,
         })
     return detections
 
