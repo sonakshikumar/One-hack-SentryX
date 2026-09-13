@@ -1,0 +1,21 @@
+import Link from 'next/link';
+import { Dashboard } from './components/Dashboard';
+import { Reveal } from './components/Reveal';
+import { Counter } from './components/Counter';
+import { UrgentReports } from './components/UrgentReports';
+import { Workbench } from './components/Workbench';
+
+const capabilities=[['◈','Virtual Fence','Draw intelligent zones that understand where people and vehicles should never be.'],['◌','Face Detection','Surface match-ready detections to operators with a privacy-aware review trail.'],['▣','ANPR Intelligence','Read plates, correlate movement, and create searchable vehicle histories.'],['◒','Night Movement','Detect anomalous movement in low light without flooding your team with noise.']];
+export default function Home(){return <div className="page home">
+ {/* The hero remains deliberately text-first to establish the premium, technical product position. */}
+ <section className="hero section"><div className="hero-copy"><p className="eyebrow">Border intelligence, reimagined</p><h1>Turn existing CCTV into an <i>autonomous</i> AI command center.</h1><p className="lead">SkySentinel converts ordinary IP cameras into a decisive, always-on perimeter intelligence layer.</p><div className="hero-actions"><Link className="button dark" href="/demo">Launch Demo Platform <b>↗</b></Link><Link className="button light" href="/settings">Gateway Settings <b>⚙</b></Link><Link className="text-link" href="/platform">Explore the platform <b>→</b></Link></div></div><div className="hero-meta"><span>01 — 05</span><span>Designed for critical environments</span></div></section>
+ <Workbench />
+ {/* This dashboard is an interactive product teaser: selecting it opens the accessible lightbox view. */}
+ <Reveal className="section dashboard-wrap"><div className="section-intro"><p className="eyebrow">Live operational view</p><p>A real-time command picture, distilled from every feed.</p></div><Dashboard /></Reveal>
+ <UrgentReports />
+ <Reveal className="section"><div className="section-heading"><p className="eyebrow">The visibility gap</p><h2>When every second matters, passive footage is not enough.</h2></div><div className="comparison"><article className="compare-card manual"><span className="compare-no">01</span><h3>Manual monitoring</h3><p>Operators scan a wall of screens. Events are noticed late, footage is difficult to search, and attention inevitably fades.</p><ul><li>Reactive, not preventative</li><li>High operator workload</li><li>Critical details lost in hours of video</li></ul></article><article className="compare-card solution"><span className="compare-no">02</span><h3>SkySentinel intelligence</h3><p>AI analyses every stream continuously, identifies meaningful change, and puts the right alert in the right hands.</p><ul><li>Actionable alerts in real time</li><li>Evidence linked to each event</li><li>One operational picture across sites</li></ul></article></div></Reveal>
+ <Reveal className="section capabilities"><div className="section-heading inline"><div><p className="eyebrow">Purpose-built intelligence</p><h2>Every feed, working harder.</h2></div><Link className="text-link" href="/platform">See platform details <b>→</b></Link></div><div className="cap-grid">{capabilities.map(([icon,title,copy])=><article className="cap-card" key={title}><span className="cap-icon">{icon}</span><h3>{title}</h3><p>{copy}</p><span className="arrow">↗</span></article>)}</div></Reveal>
+ {/* Each metric starts only after entering the viewport, avoiding distracting autoplay above the fold. */}
+ <section className="stats-band"><div><strong><Counter to={99} suffix="%" /></strong><span>event detection accuracy</span></div><div><strong><Counter to={42} suffix="ms" /></strong><span>average edge response</span></div><div><strong><Counter to={24} suffix="/7" /></strong><span>autonomous vigilance</span></div><div><strong><Counter to={0} suffix=" hardware lock-in" /></strong><span>built on open standards</span></div></section>
+ <section className="cta-panel section"><p className="eyebrow">A calmer, sharper operation</p><h2>Make every camera a proactive guard.</h2><Link href="/solutions" className="button light">See deployment possibilities <b>↗</b></Link></section>
+ </div>}
