@@ -1,5 +1,6 @@
 import { Reveal } from './Reveal';
 
+<<<<<<< HEAD
 // The editorial block keeps the original card DOM/classes so its visual treatment is unchanged.
 const reports = [
   ['FIELD NOTE', 'WEST BENGAL • JAN 2025', 'Where an unfenced river leaves communities exposed', 'Along the Sonai River, an unfenced stretch of the India-Bangladesh border has become a corridor for smuggling, infiltration, and human trafficking. Officers describe poor roads, low visibility, and people vanishing into the crowd—conditions where continuous AI detection can protect both patrols and vulnerable families.', 'Read the report - The Indian Express', 'https://indianexpress.com/article/cities/kolkata/riverine-unfenced-border-bangladesh-bsf-smugglers-infiltrators-9770889/', 'sentryx-article-1'],
@@ -14,4 +15,34 @@ export function UrgentReports() {
     'https://api.pixuate.com/static/media/heroes/optimized/solution-perimeter-monitoring-hero-1600.webp'
   ];
   return <><section className="page-hero section"><p className="eyebrow">Real-world border incidents</p><h1>The urgent need for <i>intelligent borders</i></h1><p className="lead">Real incidents of smuggling, trafficking, and infiltration demonstrating why passive CCTV is no longer enough.</p></section><Reveal className="section editorial-grid">{reports.map(([type, tag, title, copy, linkText, href], i) => <article className="article-card" key={title}><img src={reportImages[i]} alt="Border surveillance camera infrastructure" /><div><p className="eyebrow">{type} · {tag}</p><h2>{title}</h2><p>{copy}</p><a className="text-link" href={href} target="_blank" rel="noreferrer">{linkText} <b>↗</b></a></div></article>)}</Reveal></>;
+=======
+const notes = [
+  ['VISION', 'THERMAL / LOW-LIGHT', 'Why aerial IR and night video matter', 'Human silhouettes remain visible when RGB collapses. SentryX is built around that footage — not a wall of ordinary daytime cameras.', 'Explore Detection', '/demo'],
+  ['TRACKING', 'TEMPORAL IDS', 'People across frames, not single boxes', 'Detection alone is a snapshot. Multi-object tracking keeps identities so dwell, speed, and path can be measured.', 'See the pipeline', '/demo#pipeline'],
+  ['PERIMETER', 'ZONES + TRIPWIRES', 'Context turns motion into an incident', 'The same walk is different inside a restricted polygon. Operators get zone context with each flag.', 'View Alerts', '/solutions']
+];
+
+export function UrgentReports() {
+  return (
+    <>
+      <section className="page-hero section">
+        <p className="eyebrow">Problem framing</p>
+        <h1>Suspicious movement inside a <i>defined perimeter.</i></h1>
+        <p className="lead">Thermal and low-light drone video, human tracks, and zone geometry — distinguished from ordinary non-threat activity.</p>
+      </section>
+      <Reveal className="section editorial-grid">
+        {notes.map(([type, tag, title, copy, linkText, href]) => (
+          <article className="article-card" key={title}>
+            <div>
+              <p className="eyebrow">{type} · {tag}</p>
+              <h2>{title}</h2>
+              <p>{copy}</p>
+              <a className="text-link" href={href}>{linkText} <b>→</b></a>
+            </div>
+          </article>
+        ))}
+      </Reveal>
+    </>
+  );
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Link from 'next/link';
 import { Reveal } from '../components/Reveal';
 import { Workbench } from '../components/Workbench';
@@ -70,3 +71,8 @@ export default function Platform(){
   );
 }
 
+=======
+import { redirect } from 'next/navigation';
+
+export default function PlatformRedirect() { redirect('/drone-surveillance'); }
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98

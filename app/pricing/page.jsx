@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 'use client';
 import { useState } from 'react'; import { FAQ } from '../components/FAQ'; import { Reveal } from '../components/Reveal';
 const tiers=[['Enterprise','For multi-site estates','Custom','Unlimited feeds','Everything in Command','Private deployment','Dedicated success team']];
 export default function Pricing(){const [sent,setSent]=useState(false);return <div className="page"><section className="page-hero section"><p className="eyebrow">Clear starting points</p><h1>Intelligence that scales with your <i>mission.</i></h1><p className="lead">Begin with a focused operational outcome. Grow when you are ready.</p></section><Reveal className="section pricing-grid">{tiers.map(([n,sub,price,...items])=><article className="price-card" key={n}><p className="eyebrow">{n}</p><h3>{sub}</h3><div className="price">{price}<small>{price[0]==='$'?'/ month':''}</small></div><ul>{items.map(x=><li key={x}>✓ {x}</li>)}</ul><a href="#contact" className="button outline">Get started <b>↗</b></a></article>)}</Reveal><Reveal className="section faq-section"><div><p className="eyebrow">Questions, answered</p><h2>Built for decisive teams.</h2><p>Our team can help scope an approach that matches your site, connectivity, and operating model.</p></div><FAQ /></Reveal><section id="contact" className="contact section"><div><p className="eyebrow">Start a conversation</p><h2>See what your cameras could become.</h2></div>{sent?<div className="form-success">Thank you. A SkySentinel specialist will be in touch shortly. <b>✓</b></div>:<form onSubmit={e=>{e.preventDefault();setSent(true)}}><input aria-label="Work email" type="email" required placeholder="Work email"/><input aria-label="Organisation" required placeholder="Organisation"/><button className="button dark">Request briefing <b>↗</b></button></form>}</section></div>}
+=======
+import { redirect } from 'next/navigation';
+
+export default function PricingRedirect() {
+  redirect('/');
+}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98

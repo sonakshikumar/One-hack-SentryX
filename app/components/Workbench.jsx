@@ -1,9 +1,17 @@
 'use client';
 
+<<<<<<< HEAD
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useApiConfig, decodeAlertsHeader } from '../lib/apiConfig';
 import { saveLastAnalysis } from '../lib/liveFeed';
+=======
+import { useEffect, useRef, useState, useCallback } from 'react';
+import Link from 'next/link';
+import { useApiConfig, decodeAlertsHeader } from '../lib/apiConfig';
+import { saveLastAnalysis } from '../lib/liveFeed';
+import { loadSurveillanceConfig, CONFIG_EVENT } from '../lib/surveillanceConfig';
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
 
 const DEFAULT_NATIVE_VIDEO = { width: 1920, height: 1080 };
 const INITIAL_FENCE = [
@@ -19,6 +27,7 @@ const INITIAL_TRIPWIRE = [
 
 const HANDLE_RADIUS = 7;
 const MIDPOINT_RADIUS = 5;
+<<<<<<< HEAD
 
 export function Workbench() {
   const { baseUrl, swaggerUrl } = useApiConfig();
@@ -91,10 +100,65 @@ export function Workbench() {
   }, []);
 
   // Extract first frame and native dimensions when a local video file is selected
+=======
+const SUPPORTED_OBJECT_CLASSES = ['person', 'car', 'truck', 'bus', 'motorcycle', 'bicycle'];
+const ANALYSIS_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AI_ANALYSIS_TIMEOUT_MS || 10 * 60 * 1000);
+
+export function Workbench() {
+  const { baseUrl } = useApiConfig();
+  const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const [videoMode, setVideoMode] = useState('thermal');
+  const [file, setFile] = useState(null);
+  const [framePreviewUrl, setFramePreviewUrl] = useState('');
+  const [nativeRes, setNativeRes] = useState(DEFAULT_NATIVE_VIDEO);
+  const [durationSec, setDurationSec] = useState(null);
+
+  const [tool, setTool] = useState('fence');
+  const [fence, setFence] = useState(null);
+  const [fenceClosed, setFenceClosed] = useState(false);
+  const [tripwire, setTripwire] = useState(null);
+  const [tripwireFlipped, setTripwireFlipped] = useState(false);
+  const [draggingHandle, setDraggingHandle] = useState(null);
+
+  const [maxDuration, setMaxDuration] = useState(15);
+
+  const [processing, setProcessing] = useState(false);
+  const [progressPhase, setProgressPhase] = useState('');
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+
+  const canvasPointToNative = useCallback((point) => ({
+    x: Math.round(point.x * nativeRes.width / 800),
+    y: Math.round(point.y * nativeRes.height / 450)
+  }), [nativeRes]);
+
+  const nativePointToCanvas = useCallback((point) => ({
+    x: point.x * 800 / nativeRes.width,
+    y: point.y * 450 / nativeRes.height
+  }), [nativeRes]);
+
+  useEffect(() => {
+    const apply = (cfg) => {
+      if (cfg.maxDuration) setMaxDuration(Number(cfg.maxDuration));
+      if (cfg.videoMode) setVideoMode(cfg.videoMode);
+    };
+    apply(loadSurveillanceConfig());
+    const onPresetsChanged = (e) => { if (e?.detail) apply(e.detail); };
+    window.addEventListener(CONFIG_EVENT, onPresetsChanged);
+    return () => window.removeEventListener(CONFIG_EVENT, onPresetsChanged);
+  }, []);
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
   useEffect(() => {
     if (!file) {
       setFramePreviewUrl('');
       setNativeRes(DEFAULT_NATIVE_VIDEO);
+<<<<<<< HEAD
+=======
+      setDurationSec(null);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       return;
     }
 
@@ -109,6 +173,10 @@ export function Workbench() {
       if (video.videoWidth && video.videoHeight) {
         setNativeRes({ width: video.videoWidth, height: video.videoHeight });
       }
+<<<<<<< HEAD
+=======
+      if (Number.isFinite(video.duration)) setDurationSec(video.duration);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       video.currentTime = Math.min(1.0, (video.duration || 1) / 2);
     };
 
@@ -138,14 +206,20 @@ export function Workbench() {
     };
   }, [file]);
 
+<<<<<<< HEAD
   // Phased tactical progress timer
   useEffect(() => {
     if (!processing) {
       setElapsedSec(0);
+=======
+  useEffect(() => {
+    if (!processing) {
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       setProgressPhase('');
       return;
     }
 
+<<<<<<< HEAD
     const phases = [
       { at: 0, text: 'Uploading surveillance video to Edge Gateway…' },
       { at: 2, text: 'YOLO11n isolating human & vehicle detections (2x frame stride)…' },
@@ -168,6 +242,11 @@ export function Workbench() {
   }, [processing, pipelineMode]);
 
   // Canvas rendering: Background, Polygon, Midpoints, Tripwire & Arrow
+=======
+    setProgressPhase('Analysis request sent to the inference service…');
+  }, [processing]);
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -176,7 +255,24 @@ export function Workbench() {
     const render = (imgElement) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+<<<<<<< HEAD
       // 1. Render Video Backdrop
+=======
+      if (!file) {
+        ctx.fillStyle = '#16232b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#9fb2b7';
+        ctx.textAlign = 'center';
+        ctx.font = '600 16px Space Grotesk';
+        ctx.fillText(`${videoMode.toUpperCase()} MODE`, canvas.width / 2, canvas.height / 2 - 18);
+        ctx.font = '12px Inter';
+        ctx.fillStyle = '#c6d5d6';
+        ctx.fillText(`No ${videoMode === 'rgb' ? 'RGB' : videoMode === 'lowlight' ? 'low-light' : 'thermal'} footage loaded.`, canvas.width / 2, canvas.height / 2 + 12);
+        ctx.textAlign = 'start';
+        return;
+      }
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       if (imgElement && imgElement.complete && imgElement.naturalWidth !== 0) {
         ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
       } else {
@@ -184,6 +280,7 @@ export function Workbench() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+<<<<<<< HEAD
       // Tactical grid overlay
       ctx.fillStyle = 'rgba(12, 25, 33, 0.22)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -218,12 +315,33 @@ export function Workbench() {
         ctx.closePath();
         ctx.fillStyle = 'rgba(255, 0, 50, 0.25)';
         ctx.fill();
+=======
+      ctx.fillStyle = 'rgba(12, 25, 33, 0.22)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const canvasFence = fence?.map(nativePointToCanvas) || [];
+      if (canvasFence.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(canvasFence[0].x, canvasFence[0].y);
+        for (let i = 1; i < canvasFence.length; i++) {
+          ctx.lineTo(canvasFence[i].x, canvasFence[i].y);
+        }
+        if (fenceClosed && canvasFence.length >= 3) {
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255, 0, 50, 0.25)';
+          ctx.fill();
+        }
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
         ctx.strokeStyle = '#ff0033';
         ctx.lineWidth = 2;
         ctx.stroke();
 
+<<<<<<< HEAD
         // Draggable Vertex Handles
         fence.forEach((pt, i) => {
+=======
+        canvasFence.forEach((pt, i) => {
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, HANDLE_RADIUS, 0, Math.PI * 2);
           ctx.fillStyle = '#ff0033';
@@ -231,17 +349,27 @@ export function Workbench() {
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.stroke();
+<<<<<<< HEAD
 
           // Vertex label
+=======
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 9px Inter';
           ctx.fillText(String(i + 1), pt.x - 3, pt.y + 3);
         });
 
+<<<<<<< HEAD
         // Edge Midpoint Insertion Handles ("+")
         for (let i = 0; i < fence.length; i++) {
           const p1 = fence[i];
           const p2 = fence[(i + 1) % fence.length];
+=======
+        const edgeCount = fenceClosed ? canvasFence.length : canvasFence.length - 1;
+        for (let i = 0; i < edgeCount; i++) {
+          const p1 = canvasFence[i];
+          const p2 = canvasFence[(i + 1) % canvasFence.length];
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           const mx = (p1.x + p2.x) / 2;
           const my = (p1.y + p2.y) / 2;
 
@@ -253,7 +381,10 @@ export function Workbench() {
           ctx.lineWidth = 1.5;
           ctx.stroke();
 
+<<<<<<< HEAD
           // Draw "+" sign
+=======
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           ctx.strokeStyle = '#00ffc8';
           ctx.beginPath();
           ctx.moveTo(mx - 3, my);
@@ -264,9 +395,28 @@ export function Workbench() {
         }
       }
 
+<<<<<<< HEAD
       // 3. Render Tripwire (Yellow Directional Line)
       if (tripwire && tripwire.length === 2) {
         const [p1, p2] = tripwire;
+=======
+      if (tripwire && tripwire.length > 0) {
+        const canvasTripwire = tripwire.map(nativePointToCanvas);
+        const [p1, p2] = canvasTripwire;
+        const drawTripHandle = (p, label) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, HANDLE_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffea00';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#17242d';
+          ctx.font = 'bold 9px Inter';
+          ctx.fillText(label, p.x - 3, p.y + 3);
+        };
+        if (p2) {
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -274,7 +424,10 @@ export function Workbench() {
         ctx.lineWidth = 3;
         ctx.stroke();
 
+<<<<<<< HEAD
         // Directional arrow perpendicular to the line
+=======
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
         const midX = (p1.x + p2.x) / 2;
         const midY = (p1.y + p2.y) / 2;
         const dx = p2.x - p1.x;
@@ -301,6 +454,7 @@ export function Workbench() {
         ctx.fillText('CROSSING VECTOR', -42, -arrowLen - 5);
         ctx.restore();
 
+<<<<<<< HEAD
         // Draggable Handles
         const drawTripHandle = (p, label) => {
           ctx.beginPath();
@@ -317,21 +471,42 @@ export function Workbench() {
 
         drawTripHandle(p1, 'A');
         drawTripHandle(p2, 'B');
+=======
+          drawTripHandle(p1, 'A');
+          if (p2) drawTripHandle(p2, 'B');
+        } else {
+          drawTripHandle(p1, 'A');
+        }
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       }
     };
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
+<<<<<<< HEAD
     img.src = framePreviewUrl || defaultBackground;
     img.onload = () => render(img);
     if (img.complete) render(img);
   }, [fence, tripwire, tripwireFlipped, framePreviewUrl, defaultBackground, pipelineMode]);
+=======
+    if (file && framePreviewUrl) {
+      img.src = framePreviewUrl;
+      img.onload = () => render(img);
+      if (img.complete) render(img);
+    } else {
+      render(null);
+    }
+  }, [fence, fenceClosed, tripwire, tripwireFlipped, framePreviewUrl, file, videoMode, nativePointToCanvas]);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
 
+<<<<<<< HEAD
   // Pointer & Dragging Events with Midpoint Insertion
+=======
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
   function getCanvasCoords(e) {
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = 800 / rect.width;
@@ -342,6 +517,7 @@ export function Workbench() {
     };
   }
 
+<<<<<<< HEAD
   function handlePointerDown(e) {
     if (pipelineMode === 'anpr') return;
     const { x, y } = getCanvasCoords(e);
@@ -350,11 +526,32 @@ export function Workbench() {
     if (fence) {
       for (let i = 0; i < fence.length; i++) {
         if (Math.hypot(fence[i].x - x, fence[i].y - y) <= HANDLE_RADIUS + 5) {
+=======
+  function getNativeCoords(e) {
+    return canvasPointToNative(getCanvasCoords(e));
+  }
+
+  function handlePointerDown(e) {
+    const { x, y } = getCanvasCoords(e);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+
+    if (tool === 'fence' && !fence) {
+      setFence([getNativeCoords(e)]);
+      setFenceClosed(false);
+      return;
+    }
+
+    if (tool === 'fence' && fence) {
+      const canvasFence = fence.map(nativePointToCanvas);
+      for (let i = 0; i < canvasFence.length; i++) {
+        if (Math.hypot(canvasFence[i].x - x, canvasFence[i].y - y) <= HANDLE_RADIUS + 5) {
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           setDraggingHandle({ shape: 'fence', index: i });
           return;
         }
       }
 
+<<<<<<< HEAD
       // 2. Check edge midpoints for vertex insertion!
       for (let i = 0; i < fence.length; i++) {
         const p1 = fence[i];
@@ -364,6 +561,16 @@ export function Workbench() {
         if (Math.hypot(mx - x, my - y) <= MIDPOINT_RADIUS + 5) {
           // Insert new vertex into fence between i and i+1
           const newPoint = { x: Math.round(x), y: Math.round(y) };
+=======
+      const edgeCount = fenceClosed ? canvasFence.length : canvasFence.length - 1;
+      for (let i = 0; i < edgeCount; i++) {
+        const p1 = canvasFence[i];
+        const p2 = canvasFence[(i + 1) % canvasFence.length];
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2;
+        if (Math.hypot(mx - x, my - y) <= MIDPOINT_RADIUS + 5) {
+          const newPoint = getNativeCoords(e);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           const updated = [...fence];
           updated.splice(i + 1, 0, newPoint);
           setFence(updated);
@@ -371,27 +578,61 @@ export function Workbench() {
           return;
         }
       }
+<<<<<<< HEAD
     }
 
     // 3. Check tripwire vertices
     if (tripwire) {
       for (let i = 0; i < tripwire.length; i++) {
         if (Math.hypot(tripwire[i].x - x, tripwire[i].y - y) <= HANDLE_RADIUS + 5) {
+=======
+
+      if (!fenceClosed) {
+        setFence((points) => [...(points || []), getNativeCoords(e)]);
+        return;
+      }
+    }
+
+    if (tool === 'tripwire' && !tripwire) {
+      setTripwire([getNativeCoords(e)]);
+      return;
+    }
+
+    if (tool === 'tripwire' && tripwire) {
+      const canvasTripwire = tripwire.map(nativePointToCanvas);
+      for (let i = 0; i < canvasTripwire.length; i++) {
+        if (Math.hypot(canvasTripwire[i].x - x, canvasTripwire[i].y - y) <= HANDLE_RADIUS + 5) {
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           setDraggingHandle({ shape: 'tripwire', index: i });
           return;
         }
       }
+<<<<<<< HEAD
+=======
+      if (tripwire.length < 2) {
+        setTripwire((points) => [...(points || []), getNativeCoords(e)]);
+      }
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
     }
   }
 
   function handlePointerMove(e) {
     if (!draggingHandle) return;
+<<<<<<< HEAD
     const { x, y } = getCanvasCoords(e);
 
     if (draggingHandle.shape === 'fence') {
       setFence((points) => points?.map((p, i) => (i === draggingHandle.index ? { x, y } : p)));
     } else if (draggingHandle.shape === 'tripwire') {
       setTripwire((points) => points?.map((p, i) => (i === draggingHandle.index ? { x, y } : p)));
+=======
+    const point = getNativeCoords(e);
+
+    if (draggingHandle.shape === 'fence') {
+      setFence((points) => points?.map((p, i) => (i === draggingHandle.index ? point : p)));
+    } else if (draggingHandle.shape === 'tripwire') {
+      setTripwire((points) => points?.map((p, i) => (i === draggingHandle.index ? point : p)));
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
     }
   }
 
@@ -399,6 +640,7 @@ export function Workbench() {
     setDraggingHandle(null);
   }
 
+<<<<<<< HEAD
   // Remove selected vertex (must maintain at least 3 vertices for polygon)
   function removeVertex(index) {
     if (fence && fence.length > 3) {
@@ -423,10 +665,42 @@ export function Workbench() {
           tripwire.map((pt) => [Math.round(pt.x * scaleX), Math.round(pt.y * scaleY)])
         );
       }
+=======
+  function formatDuration(seconds) {
+    if (!Number.isFinite(seconds)) return 'Duration unavailable';
+    const total = Math.round(seconds);
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  function removeVideo() {
+    setFile(null);
+    setResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeVertex(index) {
+    if (fence && fence.length > 3) {
+      setFence(fence.filter((_, i) => i !== index));
+    } else if (fence && fence.length > 1) {
+      setFence(fence.filter((_, i) => i !== index));
+      setFenceClosed(false);
+    }
+  }
+
+  function exportPayload() {
+    const payload = {};
+
+    if (fence && fenceClosed && fence.length >= 3) {
+      payload.fence_polygon = JSON.stringify(fence.map((pt) => [pt.x, pt.y]));
+    }
+    if (tripwire && tripwire.length === 2) {
+      payload.tripwire_line = JSON.stringify(tripwire.map((pt) => [pt.x, pt.y]));
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
     }
     return payload;
   }
 
+<<<<<<< HEAD
   // Download Audit JSON (Checklist Item 4)
   function downloadAuditReport() {
     if (!result) return;
@@ -449,6 +723,25 @@ export function Workbench() {
         total_alert_incidents: result.alerts?.length || 0,
       },
       detected_plates: result.plates || {},
+=======
+  function downloadAuditReport() {
+    if (!result) return;
+    const auditData = {
+      report_id: `SENTRYX-${Date.now()}`,
+      generated_at: new Date().toISOString(),
+      platform: 'SentryX drone surveillance analysis',
+      inference_base_url: baseUrl,
+      endpoint_called: '/api/v1/analytics/full',
+      native_resolution: nativeRes,
+      parameters: {
+        max_duration: maxDuration,
+        video_mode: videoMode,
+      },
+      telemetry: {
+        perimeter_events: Number(result.breaches) || 0,
+        alert_count: result.alerts?.length || 0,
+      },
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       incident_alerts: result.alerts || [],
     };
 
@@ -461,11 +754,15 @@ export function Workbench() {
     URL.revokeObjectURL(url);
   }
 
+<<<<<<< HEAD
   // Download Annotated MP4 Video
+=======
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
   function downloadAnnotatedVideo() {
     if (!result?.videoUrl) return;
     const a = document.createElement('a');
     a.href = result.videoUrl;
+<<<<<<< HEAD
     a.download = `ibvap_annotated_feed_${Date.now()}.mp4`;
     a.click();
   }
@@ -478,37 +775,68 @@ export function Workbench() {
   };
 
   // Run Surveillance Analytics Pipeline
+=======
+    a.download = `sentryx_annotated_${Date.now()}.mp4`;
+    a.click();
+  }
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
   async function runAnalytics(e) {
     e.preventDefault();
     setError('');
     setResult(null);
 
     if (!file) {
+<<<<<<< HEAD
       setError('Please select or drop a surveillance video file (.mp4, .avi, .mov) to run edge analytics.');
+=======
+      setError('Upload a drone video file (.mp4, .avi, .mov) before running analysis.');
+      return;
+    }
+    if (!baseUrl) {
+      setError('AI engine is offline. Set NEXT_PUBLIC_AI_SERVICE_URL and restart the app.');
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       return;
     }
 
     const form = new FormData();
+<<<<<<< HEAD
 
     // Required Video File
     form.append('video_file', file);
 
     // Optional Geometries (omitted if unconfigured)
+=======
+    form.append('video_file', file);
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
     const zones = exportPayload();
     if (zones.fence_polygon) form.append('fence_polygon', zones.fence_polygon);
     if (zones.tripwire_line) form.append('tripwire_line', zones.tripwire_line);
 
+<<<<<<< HEAD
     // Max processing duration (capped at 60s for ultra-low latency)
     form.append('max_duration', String(Math.min(60, maxDuration)));
 
     const targetEndpoint = `${baseUrl}/api/v1/analytics/full`;
 
+=======
+    form.append('max_duration', String(Math.min(60, maxDuration)));
+    form.append('enabled_classes', JSON.stringify(SUPPORTED_OBJECT_CLASSES));
+    form.append('video_mode', videoMode === 'lowlight' ? 'low-light' : videoMode);
+    if (videoMode !== 'rgb') form.append('night_mode', 'true');
+
+    const targetEndpoint = `${baseUrl}/api/v1/analytics/full`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
     setProcessing(true);
 
     try {
       const response = await fetch(targetEndpoint, {
         method: 'POST',
         body: form,
+<<<<<<< HEAD
       });
 
       if (!response.ok) {
@@ -535,20 +863,50 @@ export function Workbench() {
       const alerts = decodeAlertsHeader(rawBase64Alerts);
 
       // 2. Convert Video Stream to Blob URL for playback
+=======
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const contentType = response.headers.get('content-type') || '(missing)';
+
+      if (!response.ok) {
+        const responseText = (await response.text()).slice(0, 2000) || '(empty response)';
+        const error = new Error(`AI request failed: HTTP ${response.status} ${response.statusText || ''}; content-type=${contentType}; response=${responseText}`);
+        error.code = 'HTTP_ERROR';
+        throw error;
+      }
+
+      if (!contentType.toLowerCase().includes('video/mp4')) {
+        const responseText = (await response.text()).slice(0, 2000) || '(empty response)';
+        throw new Error(`AI request returned an unexpected content type: ${contentType}; response=${responseText}`);
+      }
+
+      const rawBreaches = response.headers.get('X-SentryX-Breach-Count');
+      const breaches = rawBreaches ? parseInt(rawBreaches, 10) : 0;
+      const rawBase64Alerts = response.headers.get('X-SentryX-Alerts-JSON');
+      const alerts = decodeAlertsHeader(rawBase64Alerts);
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       const videoBlob = await response.blob();
       const videoUrl = URL.createObjectURL(videoBlob);
 
       const analysis = {
         videoUrl,
         breaches,
+<<<<<<< HEAD
         plates,
         alerts,
         mode: pipelineMode,
         videoMode: viewingMode,
+=======
+        alerts,
+        videoMode,
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
         nativeRes,
         timestamp: new Date().toLocaleTimeString(),
       };
       setResult(analysis);
+<<<<<<< HEAD
       // Publish so the homepage Dashboard can show this real detection
       // result (breach count, alerts, suspicion %) instead of a placeholder.
       saveLastAnalysis(analysis);
@@ -558,6 +916,20 @@ export function Workbench() {
         setError(msg || 'HTTP 502 Bad Gateway: Kaggle backend timed out (>100s) or Uvicorn is still loading EasyOCR/YOLO. Please wait 30s after running the cell, set Max Duration to 15s, and try again.');
       } else {
         setError(err.message || 'Failed to communicate with the IBVAP analytics gateway.');
+=======
+      saveLastAnalysis(analysis);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const msg = err.message || '';
+      if (err.name === 'AbortError') {
+        setError(`AI analysis timed out after ${Math.round(ANALYSIS_TIMEOUT_MS / 60000)} minutes. The 4K upload or inference may still be processing; try a shorter clip if the service did not complete.`);
+      } else if (err.code === 'HTTP_ERROR') {
+        setError(msg);
+      } else if (err.name === 'TypeError' || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError(`AI request could not be completed: network or CORS failure. URL: ${targetEndpoint}. Browser error: ${msg || 'Failed to fetch'}`);
+      } else {
+        setError(`AI analysis failed for ${targetEndpoint}: ${msg || 'Unknown client error'}`);
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       }
     } finally {
       setProcessing(false);
@@ -568,6 +940,7 @@ export function Workbench() {
 
   return (
     <section className="workbench section" id="workbench">
+<<<<<<< HEAD
       {/* Workbench Header with Live Gateway Status Pill */}
       <div className="section-heading inline workbench-top">
         <div>
@@ -808,14 +1181,197 @@ export function Workbench() {
               </>
             )}
             <input
+=======
+      <div className="section-heading inline workbench-top">
+        <div>
+          <p className="eyebrow">Drone surveillance workbench</p>
+          <h2>Upload footage. Define a perimeter. Run analysis.</h2>
+        </div>
+        <Link href="/settings" className="gateway-settings-link">Settings ⚙</Link>
+      </div>
+
+      <form className="workbench-grid" onSubmit={runAnalytics}>
+        <div className="calibrator panel">
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">02 · Perimeter configuration</p>
+              <h3>Restricted zones &amp; tripwires</h3>
+            </div>
+            <div className="zone-actions">
+              <button
+                type="button"
+                className="clear-btn"
+                onClick={() => {
+                  setFence(null);
+                  setFenceClosed(false);
+                  setTripwire(null);
+                }}
+              >
+                Clear All Zones
+              </button>
+            </div>
+          </div>
+
+          <div className="tool-row">
+            <button
+              type="button"
+              className={tool === 'fence' ? 'tool active' : 'tool'}
+              onClick={() => setTool('fence')}
+            >
+              ◈ Restricted zone
+            </button>
+            <button
+              type="button"
+              className={tool === 'tripwire' ? 'tool active' : 'tool'}
+              onClick={() => setTool('tripwire')}
+            >
+              ⌁ Perimeter tripwire
+            </button>
+
+            {tool === 'fence' && (
+              <button
+                type="button"
+                className="tool preset"
+                onClick={() => { setFence(INITIAL_FENCE.map(canvasPointToNative)); setFenceClosed(true); }}
+              >
+                + Add preset zone
+              </button>
+            )}
+
+            {tool === 'tripwire' && (
+              <>
+                <button
+                  type="button"
+                  className="tool preset"
+                  onClick={() => setTripwire(INITIAL_TRIPWIRE.map(canvasPointToNative))}
+                >
+                  + Add preset tripwire
+                </button>
+                {tripwire && (
+                  <button
+                    type="button"
+                    className="tool"
+                    onClick={() => setTripwireFlipped(!tripwireFlipped)}
+                    title="Reverse crossing direction"
+                  >
+                    ⇄ Reverse Direction
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="calibration-frame">
+            <canvas
+              ref={canvasRef}
+              className={draggingHandle ? 'drawing-canvas is-dragging' : 'drawing-canvas'}
+              width="800"
+              height="450"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+            />
+            <div className="frame-meta">
+              <span className="frame-label">
+                {file ? `NATIVE: ${nativeRes.width} × ${nativeRes.height} · CANVAS: 800 × 450` : 'NO SOURCE FRAME · CANVAS: 800 × 450'}
+              </span>
+              {file && <span className="frame-file-tag">● Source frame extracted</span>}
+            </div>
+          </div>
+
+          <div className="zone-helper-bar">
+            <span>
+              Drag any vertex. Click the <b>&quot;+&quot; handle</b> on an edge to add vertices for complex perimeters.
+            </span>
+          </div>
+
+          <div className="zone-readout">
+            {fence || tripwire ? (
+              <>
+                <div className="readout-header">
+                  <span>Geometry scaled to {nativeRes.width}×{nativeRes.height}</span>
+                  {fence && (
+                    <div className="geometry-actions">
+                      {!fenceClosed && fence.length >= 3 && <button type="button" className="remove-vert-btn" onClick={() => setFenceClosed(true)}>Close restricted zone</button>}
+                      {fenceClosed && <span className="zone-active-tag">ZONE ACTIVE</span>}
+                      <button type="button" className="remove-vert-btn" onClick={() => removeVertex(fence.length - 1)} disabled={fence.length <= 1}>Remove last vertex ({fence.length} pts)</button>
+                    </div>
+                  )}
+                </div>
+                <code>{JSON.stringify(payloadPreview, null, 2)}</code>
+              </>
+            ) : (
+              <span>No perimeter configured. Add a restricted zone or tripwire before analysis if the backend requires one.</span>
+            )}
+          </div>
+        </div>
+
+        <div className="analysis panel">
+          <p className="eyebrow">01 · Video input</p>
+          <h3>Upload drone footage</h3>
+
+          <div className={`source-drop ${file ? 'has-file' : ''}`}>
+            {file ? (
+              <div className="drop-file-info">
+                <b>DRONE FOOTAGE</b>
+                <strong>{file.name}</strong>
+                <small>
+                  {nativeRes.width} × {nativeRes.height} · {formatDuration(durationSec)} · {(file.size / 1024 / 1024).toFixed(1)} MB
+                </small>
+                <div className="upload-actions">
+                  <button type="button" className="text-link" onClick={() => fileInputRef.current?.click()}>Replace Video</button>
+                  <button type="button" className="text-link" onClick={removeVideo}>Remove</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <b>Upload Drone Footage</b>
+                <small>MP4, AVI or MOV · thermal, low-light, or RGB</small>
+              </>
+            )}
+            <input
+              ref={fileInputRef}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
               type="file"
               accept="video/mp4,video/quicktime,video/x-msvideo"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
+<<<<<<< HEAD
           </label>
 
           <label className="range-label">
             <span>Max Analysis Duration (15–30s optimal)</span>
+=======
+            {!file && <button type="button" className="button light upload-trigger" onClick={() => fileInputRef.current?.click()}>Upload Drone Footage</button>}
+          </div>
+
+          <div className="workbench-subsection">
+          <p className="eyebrow">Viewing mode</p>
+          <div className="mode-pills">
+            {[
+              ['thermal', 'Thermal'],
+              ['lowlight', 'Low-light'],
+              ['rgb', 'RGB (reference)']
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={videoMode === id ? 'tool active' : 'tool'}
+                onClick={() => setVideoMode(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          </div>
+
+          <div className="workbench-subsection">
+          <p className="eyebrow">Analysis</p>
+          <label className="range-label">
+            <span>Max analysis duration</span>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
             <output>{maxDuration}s</output>
             <input
               type="range"
@@ -826,15 +1382,30 @@ export function Workbench() {
               onChange={(e) => setMaxDuration(Number(e.target.value))}
             />
           </label>
+<<<<<<< HEAD
 
           {error && <div className="error-message">⚠️ {error}</div>}
 
           {/* Tactical Progress Loader (Checklist Item 2) */}
+=======
+          </div>
+
+          <div className="workbench-subsection pipeline-status">
+            <p className="eyebrow">Pipeline</p>
+            <div><span>Detection</span><b>Configured object classes</b></div>
+            <div><span>Tracking</span><b>ByteTrack</b></div>
+            <div><span>Behavior</span><b>Awaiting inference</b></div>
+          </div>
+
+          {error && <div className="error-message">⚠️ {error}</div>}
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           {processing ? (
             <div className="tactical-loader">
               <div className="loader-top">
                 <div className="radar-sweep" />
                 <div>
+<<<<<<< HEAD
                   <b className="loader-phase">{progressPhase}</b>
                   <div className="loader-sub">Elapsed: {elapsedSec}s · Processing at Edge</div>
                 </div>
@@ -849,28 +1420,64 @@ export function Workbench() {
           ) : (
             <button className="button dark run-button" type="submit">
               <span>Run {pipelineMode === 'full' ? 'Master Border Pipeline' : 'Checkpoint ANPR'}</span>
+=======
+                  <b className="loader-phase">ANALYZING FOOTAGE…</b>
+                  <div className="loader-sub">{progressPhase}</div>
+                </div>
+              </div>
+              <div className="loader-steps"><span>Uploading video ✓</span><span>Inference request active</span><span>Results pending</span></div>
+            </div>
+          ) : (
+            <button className="button dark run-button" type="submit" disabled={!file || !baseUrl}>
+              <span>Run AI Analysis</span>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
               <b>↗</b>
             </button>
           )}
 
+<<<<<<< HEAD
           <div className="settings-link-prompt">
             Need to change backend endpoint?{' '}
             <Link href="/settings">Configure in Settings →</Link>
+=======
+          {!baseUrl && <div className="engine-notice"><b>AI ENGINE NOT CONNECTED</b><span>Analysis requires the SentryX inference service.</span><Link href="/settings">Open Settings →</Link></div>}
+
+          <div className="settings-link-prompt">
+            Detection / behavior thresholds live in{' '}
+            <Link href="/settings">Settings →</Link>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
           </div>
         </div>
       </form>
 
+<<<<<<< HEAD
       {/* Panel 3: Results & Security Telemetry Display */}
+=======
+      {!result && !processing && (
+        <div className="results empty-results panel">
+          <p className="eyebrow">Analysis results</p>
+          <h3>No analysis has been run.</h3>
+          <p className="muted">Run a connected analysis to view detections, tracks, movement events, and perimeter alerts.</p>
+        </div>
+      )}
+
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
       {result && (
         <div className="results panel">
           <div className="results-head">
             <div>
+<<<<<<< HEAD
               <p className="eyebrow">03 · Intelligence & Defense Telemetry</p>
               <h3>Annotated Surveillance Feed · {result.timestamp}</h3>
+=======
+              <p className="eyebrow">05–07 · Detection, movement, alerts</p>
+              <h3>Annotated feed · {result.timestamp}</h3>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
             </div>
             <div className="result-actions">
               <div className="breach-pill">
                 <b>{result.breaches}</b>
+<<<<<<< HEAD
                 <small>Breaches Detected</small>
               </div>
               <button
@@ -888,10 +1495,20 @@ export function Workbench() {
                 title="Download chain-of-custody incident_report.json"
               >
                 Download Audit JSON ↧
+=======
+                <small>Perimeter events</small>
+              </div>
+              <button type="button" className="button outline" onClick={downloadAnnotatedVideo}>
+                Download MP4 ↧
+              </button>
+              <button type="button" className="button light" onClick={downloadAuditReport}>
+                Download JSON ↧
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
               </button>
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* Mounted Binary MP4 Stream */}
           <div className="result-video-container">
             <video
@@ -952,6 +1569,30 @@ export function Workbench() {
                 <span className="count-tag">
                   {result.alerts?.length || 0} Events
                 </span>
+=======
+          <div className="result-video-container">
+            <video className="result-video" controls autoPlay src={result.videoUrl} />
+            <div className="video-stream-badge">
+              ● Annotated output · {result.videoMode} mode
+            </div>
+          </div>
+
+          <div className="result-grid">
+            <div className="result-subpanel">
+              <div className="subpanel-head">
+                <p className="eyebrow">Movement / behavior</p>
+                <span className="count-tag">Development</span>
+              </div>
+              <p className="muted">
+                Behavior classification is a pipeline stage. This run reports perimeter events from detection + tracking + zone geometry. Dwell, speed, and heading labels appear here when the behavior model is connected.
+              </p>
+            </div>
+
+            <div className="result-subpanel">
+              <div className="subpanel-head">
+                <p className="eyebrow">AI Detection &amp; Alert Feed</p>
+                <span className="count-tag">{result.alerts?.length || 0} Events</span>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
               </div>
 
               {result.alerts && result.alerts.length > 0 ? (
@@ -959,15 +1600,24 @@ export function Workbench() {
                   {result.alerts.map((alert, i) => (
                     <div className="alert-card" key={i}>
                       <div className="alert-meta">
+<<<<<<< HEAD
                         <span className={`alert-type ${(alert.type || '').includes('breach') ? 'danger' : 'warning'}`}>
                           {alert.type ? alert.type.replace(/_/g, ' ') : 'Perimeter Alert'}
+=======
+                        <span className={`alert-type ${alert.type === 'breach' ? 'danger' : 'warning'}`}>
+                          {alert.type || 'Perimeter event'}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                         </span>
                         <small className="alert-time">
                           {alert.timestamp || `Frame ${alert.frame || i}`}
                         </small>
                       </div>
                       <p className="alert-msg">
+<<<<<<< HEAD
                         {alert.message || `Track #${alert.track_id || alert.id || 'N/A'} triggered perimeter crossing rule.`}
+=======
+                        {alert.message || `Track #${alert.track_id || alert.id || 'N/A'} triggered a perimeter rule. Review zone context and track history.`}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                       </p>
                       {alert.track_id && (
                         <div className="alert-track-id">
@@ -979,7 +1629,11 @@ export function Workbench() {
                 </div>
               ) : (
                 <p className="muted">
+<<<<<<< HEAD
                   No breach or tripwire incidents reported. Perimeter is secure.
+=======
+                  No perimeter events in the decoded alert list. Check the annotated video for tracks.
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                 </p>
               )}
             </div>

@@ -1,0 +1,53 @@
+export const SAMPLE_ALERTS = [
+  {
+    id: '0042',
+    severity: 'HIGH',
+    time: '10:40:45',
+    track: '042',
+    title: 'Track #042 entered Restricted Zone A',
+    behavior: 'Prolonged dwell + low-speed movement',
+    zone: 'Restricted Zone A',
+    duration: '00:39',
+    movement: 'Low speed',
+    source: 'Thermal UAV footage',
+    model: 'SentryX Detector v1',
+    signals: ['Restricted-zone presence', 'Prolonged dwell', 'Low movement velocity'],
+    status: 'Open',
+    sample: true,
+    path: [{ x: 12, y: 78 }, { x: 28, y: 64 }, { x: 44, y: 58 }, { x: 52, y: 40 }]
+  },
+  {
+    id: '0017',
+    severity: 'MEDIUM',
+    time: '10:42:12',
+    track: '017',
+    title: 'Track #017 crossed perimeter tripwire',
+    behavior: 'Approaching boundary',
+    zone: 'Perimeter tripwire',
+    duration: '00:12',
+    movement: 'Toward restricted area',
+    source: 'Thermal UAV footage',
+    model: 'SentryX Detector v1',
+    signals: ['Tripwire crossing', 'Direction toward restricted area'],
+    status: 'Open',
+    sample: true,
+    path: [{ x: 8, y: 42 }, { x: 32, y: 40 }, { x: 58, y: 36 }, { x: 82, y: 30 }]
+  },
+  {
+    id: '0029',
+    severity: 'LOW',
+    time: '10:44:03',
+    track: '029',
+    title: 'Track #029 remaining in authorized corridor',
+    behavior: 'Normal walking pattern',
+    zone: 'Authorized corridor',
+    duration: '01:04',
+    movement: 'Stable trajectory',
+    source: 'Low-light UAV footage',
+    model: 'SentryX Detector v1',
+    signals: ['Authorized zone', 'Stable trajectory'],
+    status: 'Open',
+    sample: true,
+    path: [{ x: 70, y: 62 }, { x: 74, y: 54 }, { x: 68, y: 48 }, { x: 62, y: 55 }]
+  }
+];

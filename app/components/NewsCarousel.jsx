@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+<<<<<<< HEAD
 
 // These are real, publicly accessible reports and announcements—not invented case studies.
 const reports = [
@@ -10,6 +11,14 @@ const reports = [
   { region: 'GLOBAL · 2024 EVALUATION', source: 'NIST', title: 'Face in Video Evaluation (FIVE)', copy: 'NIST evaluates whether face-recognition algorithms can identify—or correctly ignore—people appearing in degraded real-world video sequences.', href: 'https://www.nist.gov/programs-projects/face-video-evaluation-five', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80' },
   { region: 'EUROPE · 2026 PROJECT REPORT', source: 'CORDIS / European Commission', title: 'EURMARS: multi-authority border security', copy: 'The project combines ground, UAV, satellite, AI detection, tracking, behaviour analysis, and a shared command-and-control environment.', href: 'https://cordis.europa.eu/project/id/101073985/reporting/es', image: 'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=80' },
   { region: 'EUROPE · HORIZON PROJECT', source: 'CORDIS / European Commission', title: 'PopEye: privacy-preserving border biometrics', copy: 'A research project explores on-the-move biometric verification while explicitly addressing GDPR, AI Act compliance, bias, and data protection.', href: 'https://cordis.europa.eu/project/id/101168317', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80' }
+=======
+import Link from 'next/link';
+
+const reports = [
+  { region: 'DATA', source: 'Project', title: 'Thermal video sources', copy: 'Public thermal surveillance or aerial sequences used for detection under heat-signature conditions. Named datasets are listed only when evaluation uses them.', href: '/resources' },
+  { region: 'DATA', source: 'Project', title: 'Low-light video sources', copy: 'Night and near-dark footage for movement analysis when RGB is unreliable.', href: '/resources' },
+  { region: 'MODELS', source: 'Pipeline', title: 'Detection and tracking', copy: 'Person detection with multi-object tracking. Behavior classification remains a prototype stage.', href: '/demo' }
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
 ];
 
 export function NewsCarousel() {
@@ -17,5 +26,36 @@ export function NewsCarousel() {
   const visible = reports.slice(start, start + 3);
   const next = () => setStart((value) => (value + 1) % reports.length);
   const previous = () => setStart((value) => (value - 1 + reports.length) % reports.length);
+<<<<<<< HEAD
   return <section className="field-reports section"><div className="reports-heading"><div><p className="eyebrow">Real-world reports · verified sources</p><h2>AI border surveillance is a critical necessity</h2><p>Recent government mandates and defense reports—not hypothetical scenarios.</p></div><div className="carousel-controls"><button type="button" onClick={previous} aria-label="Previous reports">←</button><span>{String(start + 1).padStart(2, '0')} — {String(Math.min(start + 3, reports.length)).padStart(2, '0')}</span><button type="button" onClick={next} aria-label="Next reports">→</button></div></div><div className="reports-track">{visible.map((report) => <article className="report-card" key={report.title}><img src={report.image} alt=""/><div className="report-body"><div className="report-meta"><span>{report.region}</span><b>{report.source}</b></div><h3>{report.title}</h3><p>{report.copy}</p><a href={report.href} target="_blank" rel="noreferrer">{report.linkText || 'Read the report'} <b>↗</b></a></div></article>)}</div><div className="carousel-dots">{reports.map((report, index) => <button type="button" key={report.title} className={index === start ? 'active' : ''} onClick={() => setStart(index)} aria-label={`Show report ${index + 1}`} />)}</div><p className="reports-note">Sources open in a new tab. SkySentinel shares these references for context; reported results do not represent SkySentinel performance claims.</p></section>;
+=======
+  return (
+    <section className="field-reports section">
+      <div className="reports-heading">
+        <div>
+          <p className="eyebrow">Technical notes</p>
+          <h2>Datasets, models, evaluation</h2>
+          <p>Project documentation — not news or deployment claims.</p>
+        </div>
+        <div className="carousel-controls">
+          <button type="button" onClick={previous} aria-label="Previous">←</button>
+          <span>{String(start + 1).padStart(2, '0')} — {String(Math.min(start + 3, reports.length)).padStart(2, '0')}</span>
+          <button type="button" onClick={next} aria-label="Next">→</button>
+        </div>
+      </div>
+      <div className="reports-track">
+        {visible.map((report) => (
+          <article className="report-card" key={report.title}>
+            <div className="report-body">
+              <div className="report-meta"><span>{report.region}</span><b>{report.source}</b></div>
+              <h3>{report.title}</h3>
+              <p>{report.copy}</p>
+              <Link href={report.href}>Open <b>→</b></Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
 }

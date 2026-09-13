@@ -93,9 +93,15 @@ export default function SettingsPage() {
               <span>Settings</span>
             </div>
             <p className="eyebrow">Tactical Platform Configuration</p>
+<<<<<<< HEAD
             <h1>IBVAP Gateway & System Settings</h1>
             <p className="lead">
               Configure Intelligent Border Video Analytics Platform (SSB / MHA) gateway endpoints, verify edge latency, and customize pipeline defaults.
+=======
+            <h1>AI Service & System Settings</h1>
+            <p className="lead">
+              Configure the external AI service endpoint, verify connection latency, and customize pipeline defaults.
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
             </p>
           </div>
           <div className="header-badge-wrap">
@@ -104,19 +110,33 @@ export default function SettingsPage() {
               {healthStatus?.ok
                 ? `Online · ${healthStatus.latency}ms`
                 : healthStatus
+<<<<<<< HEAD
                 ? 'Check Gateway'
                 : 'Gateway Configured'}
+=======
+                ? 'Check AI Service'
+                : 'AI Service Configured'}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
             </span>
           </div>
         </div>
 
         <div className="settings-grid">
+<<<<<<< HEAD
           {/* Card 1: Base URL Gateway */}
           <div className="panel settings-card">
             <div className="card-top">
               <div>
                 <p className="eyebrow">01 · Edge Gateway</p>
                 <h3>API Gateway Base URL</h3>
+=======
+          {/* Card 1: AI Service URL */}
+          <div className="panel settings-card">
+            <div className="card-top">
+              <div>
+                <p className="eyebrow">01 · AI Service Connection</p>
+                <h3>AI Service Base URL</h3>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
               </div>
               <a
                 href={swaggerUrl}
@@ -129,12 +149,20 @@ export default function SettingsPage() {
               </a>
             </div>
             <p className="card-desc">
+<<<<<<< HEAD
               All master surveillance and ANPR requests route to this host. Custom deployment tunnels, on-prem edge appliances, or staging gateways can be specified here.
+=======
+              Analysis requests route to this external AI service. A Cloudflare Tunnel URL or another HTTPS deployment endpoint can be specified here.
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
             </p>
 
             <form onSubmit={handleSaveUrl} className="gateway-form">
               <label className="input-group">
+<<<<<<< HEAD
                 <span className="input-label">Gateway Base URL</span>
+=======
+                <span className="input-label">AI Service URL</span>
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                 <div className="input-wrap">
                   <input
                     type="url"
@@ -150,7 +178,11 @@ export default function SettingsPage() {
 
               <div className="btn-row">
                 <button type="submit" className="button dark">
+<<<<<<< HEAD
                   Save Gateway URL
+=======
+                  Save AI Service URL
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                 </button>
                 <button
                   type="button"
@@ -158,7 +190,11 @@ export default function SettingsPage() {
                   disabled={testing}
                   className="button outline"
                 >
+<<<<<<< HEAD
                   {testing ? 'Probing Gateway…' : 'Test Connection ⚡'}
+=======
+                  {testing ? 'Testing AI Service…' : 'Test Connection ⚡'}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                 </button>
                 {!isDefault && (
                   <button
@@ -179,7 +215,11 @@ export default function SettingsPage() {
 
               {healthStatus && (
                 <div className={`notification ${healthStatus.ok ? 'success' : 'error'}`}>
+<<<<<<< HEAD
                   <b>{healthStatus.ok ? 'Connection Verified' : 'Gateway Unreachable'}:</b> {healthStatus.message}
+=======
+                  <b>{healthStatus.ok ? 'Connection Verified' : 'AI Service Connection Error'}:</b> {healthStatus.message}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
                   {healthStatus.ok && <span> (HTTP {healthStatus.status})</span>}
                 </div>
               )}

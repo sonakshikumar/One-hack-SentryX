@@ -1,4 +1,5 @@
 import Link from 'next/link';
+<<<<<<< HEAD
 import { Dashboard } from './components/Dashboard';
 import { Reveal } from './components/Reveal';
 import { Counter } from './components/Counter';
@@ -19,3 +20,44 @@ export default function Home(){return <div className="page home">
  <section className="stats-band"><div><strong><Counter to={99} suffix="%" /></strong><span>event detection accuracy</span></div><div><strong><Counter to={42} suffix="ms" /></strong><span>average edge response</span></div><div><strong><Counter to={24} suffix="/7" /></strong><span>autonomous vigilance</span></div><div><strong><Counter to={0} suffix=" hardware lock-in" /></strong><span>built on open standards</span></div></section>
  <section className="cta-panel section"><p className="eyebrow">A calmer, sharper operation</p><h2>Make every camera a proactive guard.</h2><Link href="/solutions" className="button light">See deployment possibilities <b>↗</b></Link></section>
  </div>}
+=======
+import { Pipeline } from './components/Pipeline';
+import { SystemStatus } from './components/SystemStatus';
+
+export default function Home() {
+  return (
+    <div className="page home">
+      <section className="hero hero-compact section">
+        <div className="hero-copy">
+          <p className="eyebrow">Drone perimeter intelligence</p>
+          <h1>Turn drone video into <i>AI-powered</i> perimeter intelligence.</h1>
+          <p className="lead">
+            SentryX analyzes thermal and low-light drone footage to detect human movement, track behavior over time, evaluate defined perimeters, and generate explainable alerts for operator review.
+          </p>
+          <div className="hero-actions">
+            <Link className="button dark" href="/drone-surveillance">Run AI Analysis <b>↗</b></Link>
+            <Link className="button light" href="/drone-surveillance">Upload Drone Footage <b>↑</b></Link>
+          </div>
+        </div>
+        <div className="hero-meta">
+          <span>Drone video · Thermal / low-light · Human movement</span>
+          <span>Defined perimeter → explainable alert</span>
+        </div>
+      </section>
+
+      <SystemStatus />
+
+      <section className="section how-compact">
+        <p className="eyebrow">How SentryX works</p>
+        <Pipeline compact />
+      </section>
+
+      <section className="cta-panel section">
+        <p className="eyebrow">Start analysis</p>
+        <h2>Upload drone footage and run analysis.</h2>
+        <Link href="/drone-surveillance" className="button light">Upload Drone Footage <b>↗</b></Link>
+      </section>
+    </div>
+  );
+}
+>>>>>>> b6eb656b72cfc4e65cc3e6a1b073b902d864de98
