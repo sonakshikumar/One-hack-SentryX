@@ -13,6 +13,7 @@ class VideoSession(Base):
     zones_json = Column(Text, nullable=True)  # the zone/tripwire coordinates frontend sends, stored as JSON text
     status = Column(String, default="processing")  # processing, completed, failed
     total_frames = Column(Integer, default=0)
+    annotated_video_path = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     detections = relationship("Detection", back_populates="session")

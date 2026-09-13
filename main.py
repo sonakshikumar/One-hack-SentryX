@@ -59,16 +59,17 @@ async def analyze_video(
     db.commit()
     db.refresh(session)
 
-    # 3. Run detection (dummy for now, real YOLO model later - see detection.py)
-    detections = run_detection(video_path, zones_parsed)
+    # 3. Run detection (dummy for now, or Aurindom's real model if AI_MODEL_URL is set - see detection.py)
+    result = run_detection(video_path, zones_parsed)
+    detections = result["detections"]
+    breach_count = result["breach_count"]
 
-    breach_count = 0
     for d in detections:
         det_row = models.Detection(
             session_id=session.id,
             track_id=d["track_id"],
             object_type=d["object_type"],
-            movement_type=d.get("movement_type", "walking"),
+            movement_type=d.get("movement_type", "unknown"),
             confidence=d["confidence"],
             frame_number=d["frame_number"],
             bbox_x1=d["bbox"][0],
@@ -79,16 +80,21 @@ async def analyze_video(
         )
         db.add(det_row)
 
-        if d["zone_breach"]:
-            breach_count += 1
-            alert = models.Alert(
-                session_id=session.id,
-                alert_type="critical" if d["object_type"] == "person" else "warning",
-                message=f"{d['object_type']} entered restricted zone",
-                object_type=d["object_type"],
-                confidence=d["confidence"],
-            )
-            db.add(alert)
+    for a in result["alerts"]:
+        alert = models.Alert(
+            session_id=session.id,
+            alert_type="critical" if a.get("object_type") == "person" else "warning",
+            message=a["message"],
+            object_type=a.get("object_type"),
+        )
+        db.add(alert)
+
+    # If the real model returned an annotated video, save it so it can be served back
+    if result.get("annotated_video_bytes"):
+        annotated_path = os.path.join(UPLOAD_DIR, f"annotated_{session.id}.mp4")
+        with open(annotated_path, "wb") as f:
+            f.write(result["annotated_video_bytes"])
+        session.annotated_video_path = annotated_path
 
     session.status = "completed"
     session.total_frames = max([d["frame_number"] for d in detections], default=0)
@@ -108,12 +114,9 @@ async def analyze_video(
         "session_id": session.id,
         "breach_count": breach_count,
         "detections": detections,
-        "alerts": [
-            {"type": "critical" if d["object_type"] == "person" else "warning",
-             "message": f"{d['object_type']} entered restricted zone"}
-            for d in detections if d["zone_breach"]
-        ],
+        "alerts": [{"type": "critical" if a.get("object_type") == "person" else "warning", "message": a["message"]} for a in result["alerts"]],
         "incident_report": incident_report,
+        "annotated_video_available": bool(result.get("annotated_video_bytes")),
     }
 
 
@@ -160,6 +163,15 @@ def get_incident_report(session_id: int, db: Session = Depends(get_db)):
             for d in detections
         ],
     }
+
+
+@app.get("/api/sessions/{session_id}/video")
+def get_annotated_video(session_id: int, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    session = db.query(models.VideoSession).filter(models.VideoSession.id == session_id).first()
+    if not session or not session.annotated_video_path:
+        raise HTTPException(status_code=404, detail="Annotated video not available for this session")
+    return FileResponse(session.annotated_video_path, media_type="video/mp4")
 
 
 # ---------- ALERTS ----------
