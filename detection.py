@@ -4,7 +4,7 @@ This file has ONE job: given a video, return a list of detections.
 Right now it returns DUMMY (fake but realistic) detections, so the rest of the
 backend + frontend can be built and demoed without waiting for the real AI model.
 
-WHEN AURINDOM'S YOLO/KAGGLE MODEL IS READY:
+WHEN YOLO/KAGGLE MODEL IS READY:
 Just rewrite run_detection() below to call the Kaggle tunnel URL (config.AI_MODEL_URL)
 instead of generating fake data. Nothing else in the backend needs to change -
 main.py, database, etc. all stay exactly the same.
